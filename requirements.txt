@@ -1,0 +1,8 @@
+# ScreenWatch runtime dependencies (Python 3.8+)
+# Tkinter is NOT here — it ships with Python but on Debian/Ubuntu needs the
+# system package 'python3-tk' (see README / install.sh).
+
+mss>=9.0.0        # fast, lightweight screen capture
+numpy>=1.21       # cheap array diffing for change detection
+pynput>=1.7.6     # mouse clicking + global hotkeys (X11)
+Pillow>=9.0.0     # optional; only used for image helpers

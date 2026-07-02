@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "screenwatch"
+version = "1.0.0"
+description = "Watch a screen area and auto-click a location the moment it changes."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "ScreenWatch" }]
+keywords = ["automation", "screen", "auto-click", "linux", "gui", "monitor"]
+classifiers = [
+    "Environment :: X11 Applications",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "mss>=9.0.0",
+    "numpy>=1.21",
+    "pynput>=1.7.6",
+    "Pillow>=9.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.gui-scripts]
+screenwatch = "screenwatch.__main__:main"
+
+[project.scripts]
+screenwatch-cli = "screenwatch.__main__:main"
+
+[tool.setuptools]
+packages = ["screenwatch"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
