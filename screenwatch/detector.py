@@ -61,21 +61,35 @@ class ChangeDetector:
         sensitivity: int = 50,
         pixel_threshold: int = 25,
         compare_mode: str = "previous",
+        keep_mask: bool = False,
     ) -> None:
         self.pixel_threshold = int(pixel_threshold)
         self.compare_mode = compare_mode
         self.area_threshold = sensitivity_to_area(sensitivity)
+        self.keep_mask = keep_mask
+        # When keep_mask is on, this holds the boolean "which pixels changed"
+        # array from the most recent comparison, for the GUI's why-view.
+        self.last_mask: Optional[np.ndarray] = None
         self._reference: Optional[np.ndarray] = None
 
     def reset(self) -> None:
         """Forget the reference frame (e.g. after a click or when restarting)."""
         self._reference = None
+        self.last_mask = None
 
-    def update_settings(self, sensitivity: int, pixel_threshold: int, compare_mode: str) -> None:
+    def update_settings(
+        self,
+        sensitivity: int,
+        pixel_threshold: int,
+        compare_mode: str,
+        keep_mask: Optional[bool] = None,
+    ) -> None:
         """Apply live GUI changes without dropping the reference frame."""
         self.area_threshold = sensitivity_to_area(sensitivity)
         self.pixel_threshold = int(pixel_threshold)
         self.compare_mode = compare_mode
+        if keep_mask is not None:
+            self.keep_mask = keep_mask
 
     def process(self, frame: np.ndarray) -> DetectionResult:
         """Feed one grayscale frame; return whether it counts as a change."""
@@ -89,9 +103,13 @@ class ChangeDetector:
             return DetectionResult(changed=False, score=0.0)
 
         diff = np.abs(frame - self._reference)
-        changed_pixels = np.count_nonzero(diff > self.pixel_threshold)
+        mask = diff > self.pixel_threshold
+        changed_pixels = int(np.count_nonzero(mask))
         score = changed_pixels / diff.size if diff.size else 0.0
         changed = bool(score >= self.area_threshold)
+        # Only keep the mask when the GUI wants to explain detections; this
+        # avoids retaining an extra array on every frame during normal runs.
+        self.last_mask = mask if self.keep_mask else None
 
         if self.compare_mode == "previous":
             # Always advance the reference so we track frame-to-frame motion.

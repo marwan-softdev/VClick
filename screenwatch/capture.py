@@ -57,6 +57,47 @@ def capture_size(width: int, height: int, downscale_max: int) -> Tuple[int, int]
     return rows, cols
 
 
+def build_change_preview(
+    raw: bytes,
+    width: int,
+    height: int,
+    mask: "np.ndarray",
+    out_max: int = 240,
+) -> str:
+    """Render a "why it detected" image and return it as a base64 PNG string.
+
+    The captured region is shown in colour with the pixels that changed tinted
+    red, so the user can see exactly *where* and *how much* changed.  Returns a
+    base64 string that Tk's ``PhotoImage(data=...)`` can display directly (no
+    ImageTk needed).  Only called when a change is actually detected, so its
+    cost never touches the steady-state loop.
+    """
+    import base64
+    import io
+
+    from PIL import Image
+
+    bgra = np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 4)
+    rgb = bgra[:, :, [2, 1, 0]].astype(np.float32)  # BGR -> RGB
+
+    # The mask is at the detector's downscaled resolution; blow it up to the
+    # full region with nearest-neighbour so blocks line up with what changed.
+    mask_img = Image.fromarray((mask.astype(np.uint8) * 255), mode="L").resize(
+        (width, height), resample=Image.NEAREST
+    )
+    m = (np.asarray(mask_img) > 127)[:, :, None]
+
+    # Dim unchanged areas slightly and paint changed areas red so they pop.
+    red = np.array([255.0, 60.0, 60.0])
+    out = np.where(m, 0.35 * rgb + 0.65 * red, 0.6 * rgb)
+    img = Image.fromarray(out.clip(0, 255).astype(np.uint8), mode="RGB")
+
+    img.thumbnail((out_max, out_max), Image.NEAREST)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
 def get_virtual_geometry() -> dict:
     """Return the bounding box covering all monitors: ``{left, top, width, height}``.
 

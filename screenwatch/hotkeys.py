@@ -10,6 +10,25 @@ from __future__ import annotations
 from typing import Callable, Dict, Optional
 
 
+def pretty(hotkey: str) -> str:
+    """Turn a pynput hotkey string like ``<ctrl>+<shift>+s`` into ``Ctrl+Shift+S``."""
+    parts = []
+    for token in (hotkey or "").split("+"):
+        token = token.strip().strip("<>")
+        if not token:
+            continue
+        parts.append(token.upper() if len(token) == 1 else token.capitalize())
+    return "+".join(parts) if parts else "(unset)"
+
+
+def is_valid(hotkey: str) -> bool:
+    """A minimal sanity check that a string looks like a usable hotkey."""
+    if not isinstance(hotkey, str) or not hotkey.strip():
+        return False
+    tokens = [t.strip() for t in hotkey.split("+") if t.strip()]
+    return len(tokens) >= 1
+
+
 class HotkeyManager:
     """Registers process-wide hotkeys mapped to callbacks."""
 

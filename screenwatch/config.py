@@ -109,6 +109,14 @@ class Config:
     play_sound: bool = False
     downscale_max: int = 120
 
+    # Global hotkeys (pynput format, e.g. "<ctrl>+<shift>+s").
+    hotkeys_enabled: bool = True
+    hotkey_toggle: str = "<ctrl>+<shift>+s"
+    hotkey_quit: str = "<ctrl>+<shift>+q"
+
+    # Show a visual explanation (highlighted diff) of each detected change.
+    show_detection_preview: bool = True
+
     # -- validation --------------------------------------------------------
     def clamp(self) -> "Config":
         """Coerce all fields into their valid ranges.  Returns ``self``."""
@@ -126,6 +134,10 @@ class Config:
             self.click_type = "single"
         if self.compare_mode not in COMPARE_MODES:
             self.compare_mode = "previous"
+        if not isinstance(self.hotkey_toggle, str) or not self.hotkey_toggle.strip():
+            self.hotkey_toggle = "<ctrl>+<shift>+s"
+        if not isinstance(self.hotkey_quit, str) or not self.hotkey_quit.strip():
+            self.hotkey_quit = "<ctrl>+<shift>+q"
         return self
 
     @property

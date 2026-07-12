@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from .capture import to_gray
+from .capture import build_change_preview, to_gray
 from .clicker import Clicker
 from .config import Config
 from .detector import ChangeDetector
@@ -33,6 +33,7 @@ class MonitorEvent:
     score: float = 0.0
     clicks: int = 0
     elapsed: float = 0.0
+    preview: Optional[str] = None  # base64 PNG explaining a detected change
 
 
 EventCallback = Callable[[MonitorEvent], None]
@@ -79,7 +80,10 @@ class Monitor:
         cfg = self._config
         import mss  # lazy: keeps the module importable without a display
 
-        detector = ChangeDetector(cfg.sensitivity, cfg.pixel_threshold, cfg.compare_mode)
+        detector = ChangeDetector(
+            cfg.sensitivity, cfg.pixel_threshold, cfg.compare_mode,
+            keep_mask=cfg.show_detection_preview,
+        )
         monitor_box = cfg.region.as_mss_monitor()
         self._started_at = time.monotonic()
         last_click = 0.0
@@ -93,11 +97,17 @@ class Monitor:
                     period = 1.0 / max(0.5, cfg.fps)
 
                     # Live-apply any settings the GUI changed while running.
-                    detector.update_settings(cfg.sensitivity, cfg.pixel_threshold, cfg.compare_mode)
+                    detector.update_settings(
+                        cfg.sensitivity, cfg.pixel_threshold, cfg.compare_mode,
+                        keep_mask=cfg.show_detection_preview,
+                    )
 
                     shot = sct.grab(monitor_box)
                     gray = to_gray(shot.raw, shot.width, shot.height, cfg.downscale_max)
+                    # The mask belongs to the pre-advance reference, so capture
+                    # it right after process() while shot still holds this frame.
                     result = detector.process(gray)
+                    change_mask = detector.last_mask
                     frame_index += 1
 
                     now = time.monotonic()
@@ -109,6 +119,14 @@ class Monitor:
                             # Interruptible delay.
                             if self._stop.wait(cfg.click_delay):
                                 break
+                        preview = None
+                        if cfg.show_detection_preview and change_mask is not None:
+                            try:
+                                preview = build_change_preview(
+                                    shot.raw, shot.width, shot.height, change_mask
+                                )
+                            except Exception:  # noqa: BLE001 - preview is optional
+                                preview = None
                         self._do_click(cfg)
                         self._clicks += 1
                         last_click = time.monotonic()
@@ -122,6 +140,7 @@ class Monitor:
                                 score=result.score,
                                 clicks=self._clicks,
                                 elapsed=now - self._started_at,
+                                preview=preview,
                             )
                         )
                         if cfg.max_clicks and self._clicks >= cfg.max_clicks:

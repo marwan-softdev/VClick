@@ -13,8 +13,9 @@ It is built to run **for hours** with a tiny CPU and memory footprint.
 
 ## Highlights
 
-- 🖼️ **Point-and-drag selection** — draw the watch area and click point right on
-  top of your real screen, no coordinate typing.
+- 🖼️ **Live point-and-drag selection** — draw the watch area and click point
+  right on top of your **live** screen (a light overlay, not a frozen snapshot);
+  press **Esc or right-click** to cancel.
 - ⚡ **Low resource use** — the watched region is down-scaled to a tiny grayscale
   image and diffed with NumPy. On an 800×600 region this is **~0.14% of one CPU
   core at 5 fps** and a few dozen KiB of working memory. Made for 4–5 hour runs.
@@ -24,8 +25,10 @@ It is built to run **for hours** with a tiny CPU and memory footprint.
   to *deviation from a starting state* (vs. the frame captured on Start).
 - 🖱️ **Flexible clicking** — left / right / middle, single or double, optional
   delay, and a **cooldown** so it never machine-guns clicks.
-- ⌨️ **Global hotkeys** — start/stop (`Ctrl+Shift+S`) or quit (`Ctrl+Shift+Q`)
-  without switching windows (X11).
+- 🔍 **"Why did it click?"** — an optional panel shows the watched region with the
+  exact pixels that changed highlighted in red, plus a timestamped detection log.
+- ⌨️ **Customizable global hotkeys** — record any combination for start/stop and
+  quit (defaults `Ctrl+Shift+S` / `Ctrl+Shift+Q`) right in the Hotkeys tab (X11).
 - 💾 **Remembers everything** — settings and selections persist between runs.
 - 🐧 **X11 & Wayland aware** — best on X11; on Wayland it falls back to
   `ydotool`/`xdotool` for clicking and tells you what it needs.
@@ -83,35 +86,42 @@ Check your environment at any time:
    filter. Defaults work well for most cases.
 4. **Press ▶ Start.** ScreenWatch now watches. When the region changes, it clicks
    your point. The status bar shows live activity, click count, and uptime.
-5. **Press ■ Stop** (or `Ctrl+Shift+S`) when you’re done.
+5. **Press ■ Stop** (or your start/stop hotkey) when you’re done.
 
-> Tip: Press Escape while selecting to cancel without changing anything.
+Open the **Why / Log** tab to watch each detection: it shows the region with the
+changed pixels highlighted in red and logs every click with a timestamp and the
+percentage that changed. Customize the hotkeys in the **Hotkeys** tab — click
+*Change…* and press the combination you want.
+
+> Tip: While selecting, press **Escape or right-click** to cancel without
+> changing anything. The overlay is lightly tinted so your live screen stays
+> visible underneath.
 
 ### The window at a glance
 
 ```
 ScreenWatch — auto-click on change
-────────────────────────────────────────
- 1 · Targets
-   Watch region:  640×48 at (1200, 300)   [Select…]
-   Click point:   (1420, 690)             [Select…]
+──────────────────────────────────────────────
+Watches a screen area and clicks the instant it changes.
 
- 2 · Detection
-   Sensitivity     ──────●────────  62
-   Check rate (fps)──●────────────  5.0
-   Noise filter    ────●──────────  25
-   Compare against: (•) Previous frame  ( ) Start frame
-
- 3 · Click behaviour
-   Button [left ▾]  Type [single ▾]
-   Cooldown 1.0s   Delay 0.0s   Max clicks 0 (0 = unlimited)
-   [ ] Beep on each click
-
+┌ Targets & Detection │ Clicking │ Hotkeys │ Why / Log ┐
+│ Targets                                              │
+│   Watch region:  640×48 at (1200, 300)   [Select…]   │
+│   Click point:   (1420, 690)             [Select…]   │
+│ Detection                                            │
+│   Sensitivity     ──────●────────  62                │
+│   Check rate (fps)──●────────────  5.0               │
+│   Noise filter    ────●──────────  25                │
+│   Compare against: (•) Previous frame ( ) Start frame│
+└──────────────────────────────────────────────────────┘
         ▶  Start
    [▓▓▓▓░░░░░░░░░░░░░]  activity
    ● Watching…   clicks: 3 · uptime: 12m 04s · change: 0.81%
-   Global hotkeys: Ctrl+Shift+S start/stop · Ctrl+Shift+Q quit
+   Active — Ctrl+Shift+S start/stop · Ctrl+Shift+Q quit
 ```
+
+The **Why / Log** tab shows a highlighted image of exactly which pixels changed
+on the last detection, plus a scrolling, timestamped log of every click.
 
 ---
 
@@ -128,6 +138,8 @@ ScreenWatch — auto-click on change
 | **Delay (s)** | Wait this long after detecting a change before clicking. |
 | **Max clicks** | Auto-stop after N clicks (0 = unlimited). |
 | **Beep on each click** | Terminal bell feedback. |
+| **Explain detections** | Capture and show which pixels changed (the “Why / Log” tab). Turn off for the absolute minimum overhead. |
+| **Hotkeys** | Enable/disable global hotkeys and record custom combinations for start/stop and quit. |
 
 Settings are saved to `~/.config/screenwatch/config.json` on exit (or via
 **File → Save settings**).
@@ -203,7 +215,7 @@ tests/               headless unit + end-to-end tests
 
 ```bash
 pip install -r requirements.txt pytest
-python -m pytest -q          # 30 tests, all run headless (no display needed)
+python -m pytest -q          # 39 tests, all run headless (no display needed)
 ```
 
 The core (config, capture, detector, monitor) has **no import-time GUI or input

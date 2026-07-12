@@ -7,18 +7,28 @@ Kept in one file for easy distribution.  Tkinter is imported at call time inside
 from __future__ import annotations
 
 import queue
+import time
 from typing import Optional
 
 from . import __app_name__, __version__
 from .config import CLICK_BUTTONS, CLICK_TYPES, Config
-from .hotkeys import HotkeyManager
+from .hotkeys import HotkeyManager, is_valid, pretty
 from .monitor import Monitor, MonitorEvent
 
-# Toggle / quit hotkeys (pynput syntax).
-HOTKEY_TOGGLE = "<ctrl>+<shift>+s"
-HOTKEY_QUIT = "<ctrl>+<shift>+q"
-
 PAD = 8
+
+# Keysyms that are modifiers themselves — ignored while capturing a hotkey.
+_MODIFIER_KEYSYMS = {
+    "Control_L", "Control_R", "Shift_L", "Shift_R", "Alt_L", "Alt_R",
+    "Super_L", "Super_R", "Meta_L", "Meta_R", "ISO_Level3_Shift",
+}
+_SPECIAL_KEYS = {
+    "Return": "<enter>", "space": "<space>", "Tab": "<tab>",
+    "BackSpace": "<backspace>", "Delete": "<delete>", "Up": "<up>",
+    "Down": "<down>", "Left": "<left>", "Right": "<right>", "Home": "<home>",
+    "End": "<end>", "Prior": "<page_up>", "Next": "<page_down>",
+    "Insert": "<insert>",
+}
 
 
 def _fmt_uptime(seconds: float) -> str:
@@ -30,6 +40,42 @@ def _fmt_uptime(seconds: float) -> str:
     if m:
         return f"{m}m {s:02d}s"
     return f"{s}s"
+
+
+def _keysym_to_token(keysym: str) -> Optional[str]:
+    if len(keysym) == 1 and keysym.isprintable():
+        return keysym.lower()
+    if keysym in _SPECIAL_KEYS:
+        return _SPECIAL_KEYS[keysym]
+    if len(keysym) >= 2 and keysym[0] in "Ff" and keysym[1:].isdigit():
+        return f"<{keysym.lower()}>"
+    return None
+
+
+def _event_to_hotkey(event) -> Optional[str]:
+    """Turn a Tk key event into a pynput hotkey string, or ``None`` if unusable."""
+    state = event.state
+    mods = []
+    if state & 0x4:
+        mods.append("<ctrl>")
+    if state & 0x8:
+        mods.append("<alt>")
+    if state & 0x40:
+        mods.append("<cmd>")
+    if state & 0x1:
+        mods.append("<shift>")
+    key = _keysym_to_token(event.keysym)
+    if key is None:
+        return None
+    combo = "+".join(mods + [key])
+    # Confirm pynput can actually register it before we accept it.
+    try:
+        from pynput import keyboard
+
+        keyboard.HotKey.parse(combo)
+    except Exception:  # noqa: BLE001
+        return None
+    return combo
 
 
 class ScreenWatchApp:
@@ -50,9 +96,10 @@ class ScreenWatchApp:
         self._actions: "queue.Queue[str]" = queue.Queue()
         self.monitor = Monitor(self.config, on_event=self._events.put)
         self.hotkeys = HotkeyManager()
+        self._preview_photo = None  # keep a ref so Tk doesn't GC the image
 
         root.title(f"{__app_name__} — auto-click on change")
-        root.minsize(460, 640)
+        root.minsize(500, 660)
         root.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self._build_style()
@@ -60,7 +107,7 @@ class ScreenWatchApp:
         self._build_widgets()
         self._sync_widgets_from_config()
 
-        self._start_hotkeys()
+        self._apply_hotkeys()
         self.root.after(100, self._poll)
 
     # ------------------------------------------------------------------ UI
@@ -71,7 +118,6 @@ class ScreenWatchApp:
                 style.theme_use(theme)
                 break
         style.configure("Header.TLabel", font=("Sans", 15, "bold"))
-        style.configure("Section.TLabelframe.Label", font=("Sans", 10, "bold"))
         style.configure("Value.TLabel", foreground="#2b6cb0")
         style.configure("Start.TButton", font=("Sans", 12, "bold"), padding=8)
         style.configure("Status.TLabel", font=("Sans", 11, "bold"))
@@ -94,48 +140,70 @@ class ScreenWatchApp:
         tk, ttk = self.tk, self.ttk
         root = self.root
 
-        outer = ttk.Frame(root, padding=PAD)
-        outer.pack(fill="both", expand=True)
+        header = ttk.Frame(root, padding=(PAD, PAD, PAD, 0))
+        header.pack(fill="x")
+        ttk.Label(header, text="ScreenWatch", style="Header.TLabel").pack(anchor="w")
+        ttk.Label(header, text="Watches a screen area and clicks the instant it changes.",
+                  foreground="#666").pack(anchor="w")
 
-        ttk.Label(outer, text="ScreenWatch", style="Header.TLabel").pack(anchor="w")
-        ttk.Label(
-            outer,
-            text="Watches a screen area and clicks the instant it changes.",
-            foreground="#555",
-        ).pack(anchor="w", pady=(0, PAD))
+        # Persistent control bar pinned to the bottom.
+        self._build_control_bar(root)
 
-        # --- Targets -----------------------------------------------------
-        targets = ttk.LabelFrame(outer, text="1 · Targets", style="Section.TLabelframe", padding=PAD)
-        targets.pack(fill="x", pady=(0, PAD))
+        # Tabbed settings fill the middle.
+        nb = ttk.Notebook(root)
+        nb.pack(fill="both", expand=True, padx=PAD, pady=PAD)
+        self._build_tab_watch(nb)
+        self._build_tab_clicking(nb)
+        self._build_tab_hotkeys(nb)
+        self._build_tab_why(nb)
+
+    def _build_control_bar(self, root) -> None:
+        ttk = self.ttk
+        bar = ttk.Frame(root, padding=PAD)
+        bar.pack(side="bottom", fill="x")
+
+        self.start_btn = ttk.Button(bar, text="▶  Start", style="Start.TButton", command=self.toggle)
+        self.start_btn.pack(fill="x")
+        self.activity = ttk.Progressbar(bar, maximum=100, mode="determinate")
+        self.activity.pack(fill="x", pady=(PAD, 2))
+        self.status_lbl = ttk.Label(bar, text="Idle — select targets to begin.", style="Status.TLabel")
+        self.status_lbl.pack(anchor="w")
+        self.stats_lbl = ttk.Label(bar, text="", foreground="#555")
+        self.stats_lbl.pack(anchor="w")
+        self.hotkey_lbl = ttk.Label(bar, text="", foreground="#777", font=("Sans", 9))
+        self.hotkey_lbl.pack(anchor="w", pady=(4, 0))
+
+    def _build_tab_watch(self, nb) -> None:
+        tk, ttk = self.tk, self.ttk
+        tab = ttk.Frame(nb, padding=PAD)
+        nb.add(tab, text="Targets & Detection")
+
+        targets = ttk.LabelFrame(tab, text="Targets", padding=PAD)
+        targets.pack(fill="x")
         targets.columnconfigure(1, weight=1)
-
         ttk.Label(targets, text="Watch region:").grid(row=0, column=0, sticky="w")
         self.region_lbl = ttk.Label(targets, text="(none)", style="Value.TLabel")
         self.region_lbl.grid(row=0, column=1, sticky="w", padx=PAD)
         self.region_btn = ttk.Button(targets, text="Select…", command=self.select_region)
         self.region_btn.grid(row=0, column=2, sticky="e")
-
         ttk.Label(targets, text="Click point:").grid(row=1, column=0, sticky="w", pady=(6, 0))
         self.point_lbl = ttk.Label(targets, text="(none)", style="Value.TLabel")
         self.point_lbl.grid(row=1, column=1, sticky="w", padx=PAD, pady=(6, 0))
         self.point_btn = ttk.Button(targets, text="Select…", command=self.select_point)
         self.point_btn.grid(row=1, column=2, sticky="e", pady=(6, 0))
 
-        # --- Detection ---------------------------------------------------
-        detect = ttk.LabelFrame(outer, text="2 · Detection", style="Section.TLabelframe", padding=PAD)
-        detect.pack(fill="x", pady=(0, PAD))
+        detect = ttk.LabelFrame(tab, text="Detection", padding=PAD)
+        detect.pack(fill="x", pady=(PAD, 0))
         detect.columnconfigure(1, weight=1)
 
         self.sensitivity_var = tk.IntVar()
-        self._slider(detect, 0, "Sensitivity", self.sensitivity_var, 1, 100, self._on_setting_change,
+        self._slider(detect, 0, "Sensitivity", self.sensitivity_var, 1, 100,
                      hint="higher = reacts to smaller changes")
-
         self.fps_var = tk.DoubleVar()
-        self._slider(detect, 2, "Check rate (fps)", self.fps_var, 0.5, 30, self._on_setting_change,
+        self._slider(detect, 2, "Check rate (fps)", self.fps_var, 0.5, 30,
                      hint="lower = less CPU", fmt="{:.1f}")
-
         self.threshold_var = tk.IntVar()
-        self._slider(detect, 4, "Noise filter", self.threshold_var, 0, 100, self._on_setting_change,
+        self._slider(detect, 4, "Noise filter", self.threshold_var, 0, 100,
                      hint="ignore per-pixel changes below this")
 
         ttk.Label(detect, text="Compare against:").grid(row=6, column=0, sticky="w", pady=(6, 0))
@@ -147,70 +215,100 @@ class ScreenWatchApp:
         ttk.Radiobutton(cmp_frame, text="Start frame (deviation from state)", value="baseline",
                         variable=self.compare_var, command=self._on_setting_change).pack(anchor="w")
 
-        # --- Click behaviour --------------------------------------------
-        behave = ttk.LabelFrame(outer, text="3 · Click behaviour", style="Section.TLabelframe", padding=PAD)
-        behave.pack(fill="x", pady=(0, PAD))
+    def _build_tab_clicking(self, nb) -> None:
+        tk, ttk = self.tk, self.ttk
+        tab = ttk.Frame(nb, padding=PAD)
+        nb.add(tab, text="Clicking")
         for c in (1, 3):
-            behave.columnconfigure(c, weight=1)
+            tab.columnconfigure(c, weight=1)
 
-        ttk.Label(behave, text="Button:").grid(row=0, column=0, sticky="w")
+        ttk.Label(tab, text="Button:").grid(row=0, column=0, sticky="w")
         self.button_var = tk.StringVar()
-        ttk.Combobox(behave, textvariable=self.button_var, values=list(CLICK_BUTTONS),
+        ttk.Combobox(tab, textvariable=self.button_var, values=list(CLICK_BUTTONS),
                      state="readonly", width=8).grid(row=0, column=1, sticky="w", padx=(4, PAD))
-
-        ttk.Label(behave, text="Type:").grid(row=0, column=2, sticky="w")
+        ttk.Label(tab, text="Type:").grid(row=0, column=2, sticky="w")
         self.type_var = tk.StringVar()
-        ttk.Combobox(behave, textvariable=self.type_var, values=list(CLICK_TYPES),
+        ttk.Combobox(tab, textvariable=self.type_var, values=list(CLICK_TYPES),
                      state="readonly", width=8).grid(row=0, column=3, sticky="w", padx=4)
 
-        ttk.Label(behave, text="Cooldown (s):").grid(row=1, column=0, sticky="w", pady=(6, 0))
+        ttk.Label(tab, text="Cooldown (s):").grid(row=1, column=0, sticky="w", pady=(8, 0))
         self.cooldown_var = tk.DoubleVar()
-        ttk.Spinbox(behave, from_=0, to=3600, increment=0.5, width=8,
-                    textvariable=self.cooldown_var, command=self._on_setting_change
-                    ).grid(row=1, column=1, sticky="w", padx=(4, PAD), pady=(6, 0))
-
-        ttk.Label(behave, text="Delay (s):").grid(row=1, column=2, sticky="w", pady=(6, 0))
+        ttk.Spinbox(tab, from_=0, to=3600, increment=0.5, width=8, textvariable=self.cooldown_var,
+                    command=self._on_setting_change).grid(row=1, column=1, sticky="w", padx=(4, PAD), pady=(8, 0))
+        ttk.Label(tab, text="Delay (s):").grid(row=1, column=2, sticky="w", pady=(8, 0))
         self.delay_var = tk.DoubleVar()
-        ttk.Spinbox(behave, from_=0, to=60, increment=0.1, width=8,
-                    textvariable=self.delay_var, command=self._on_setting_change
-                    ).grid(row=1, column=3, sticky="w", padx=4, pady=(6, 0))
+        ttk.Spinbox(tab, from_=0, to=60, increment=0.1, width=8, textvariable=self.delay_var,
+                    command=self._on_setting_change).grid(row=1, column=3, sticky="w", padx=4, pady=(8, 0))
 
-        ttk.Label(behave, text="Max clicks:").grid(row=2, column=0, sticky="w", pady=(6, 0))
+        ttk.Label(tab, text="Max clicks:").grid(row=2, column=0, sticky="w", pady=(8, 0))
         self.maxclicks_var = tk.IntVar()
-        ttk.Spinbox(behave, from_=0, to=1_000_000, increment=1, width=8,
-                    textvariable=self.maxclicks_var, command=self._on_setting_change
-                    ).grid(row=2, column=1, sticky="w", padx=(4, PAD), pady=(6, 0))
-        ttk.Label(behave, text="(0 = unlimited)", foreground="#777").grid(
-            row=2, column=2, columnspan=2, sticky="w", pady=(6, 0))
+        ttk.Spinbox(tab, from_=0, to=1_000_000, increment=1, width=8, textvariable=self.maxclicks_var,
+                    command=self._on_setting_change).grid(row=2, column=1, sticky="w", padx=(4, PAD), pady=(8, 0))
+        ttk.Label(tab, text="(0 = unlimited)", foreground="#777").grid(
+            row=2, column=2, columnspan=2, sticky="w", pady=(8, 0))
 
         self.sound_var = tk.BooleanVar()
-        ttk.Checkbutton(behave, text="Beep on each click", variable=self.sound_var,
+        ttk.Checkbutton(tab, text="Beep on each click", variable=self.sound_var,
                         command=self._on_setting_change).grid(
-            row=3, column=0, columnspan=4, sticky="w", pady=(6, 0))
+            row=3, column=0, columnspan=4, sticky="w", pady=(10, 0))
 
-        # --- Control -----------------------------------------------------
-        control = ttk.Frame(outer)
-        control.pack(fill="x", pady=(4, 0))
-        self.start_btn = ttk.Button(control, text="▶  Start", style="Start.TButton", command=self.toggle)
-        self.start_btn.pack(fill="x")
+    def _build_tab_hotkeys(self, nb) -> None:
+        tk, ttk = self.tk, self.ttk
+        tab = ttk.Frame(nb, padding=PAD)
+        nb.add(tab, text="Hotkeys")
+        tab.columnconfigure(1, weight=1)
 
-        self.activity = ttk.Progressbar(outer, maximum=100, mode="determinate")
-        self.activity.pack(fill="x", pady=(PAD, 2))
+        self.hotkey_enabled_var = tk.BooleanVar()
+        ttk.Checkbutton(tab, text="Enable global hotkeys", variable=self.hotkey_enabled_var,
+                        command=self._apply_hotkeys).grid(row=0, column=0, columnspan=3, sticky="w")
 
-        self.status_lbl = ttk.Label(outer, text="Idle — select targets to begin.", style="Status.TLabel")
-        self.status_lbl.pack(anchor="w")
-        self.stats_lbl = ttk.Label(outer, text="", foreground="#555")
-        self.stats_lbl.pack(anchor="w")
+        ttk.Label(tab, text="Start / Stop:").grid(row=1, column=0, sticky="w", pady=(10, 0))
+        self.toggle_hotkey_lbl = ttk.Label(tab, text="", style="Value.TLabel")
+        self.toggle_hotkey_lbl.grid(row=1, column=1, sticky="w", padx=PAD, pady=(10, 0))
+        ttk.Button(tab, text="Change…", command=lambda: self._capture_hotkey("toggle")).grid(
+            row=1, column=2, sticky="e", pady=(10, 0))
 
-        self.hotkey_lbl = ttk.Label(
-            outer,
-            text="Global hotkeys: Ctrl+Shift+S start/stop · Ctrl+Shift+Q quit",
-            foreground="#777",
-            font=("Sans", 9),
-        )
-        self.hotkey_lbl.pack(anchor="w", pady=(PAD, 0))
+        ttk.Label(tab, text="Quit:").grid(row=2, column=0, sticky="w", pady=(6, 0))
+        self.quit_hotkey_lbl = ttk.Label(tab, text="", style="Value.TLabel")
+        self.quit_hotkey_lbl.grid(row=2, column=1, sticky="w", padx=PAD, pady=(6, 0))
+        ttk.Button(tab, text="Change…", command=lambda: self._capture_hotkey("quit")).grid(
+            row=2, column=2, sticky="e", pady=(6, 0))
 
-    def _slider(self, parent, row, label, var, lo, hi, cmd, hint="", fmt="{:.0f}"):
+        self.hotkey_status_lbl = ttk.Label(tab, text="", foreground="#555", wraplength=440)
+        self.hotkey_status_lbl.grid(row=3, column=0, columnspan=3, sticky="w", pady=(12, 0))
+        ttk.Label(
+            tab,
+            text="Global hotkeys work on X11. On Wayland the system usually blocks them —\n"
+                 "use the Start button instead.",
+            foreground="#777", font=("Sans", 9),
+        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(10, 0))
+
+    def _build_tab_why(self, nb) -> None:
+        tk, ttk = self.tk, self.ttk
+        tab = ttk.Frame(nb, padding=PAD)
+        nb.add(tab, text="Why / Log")
+
+        self.preview_var = tk.BooleanVar()
+        ttk.Checkbutton(tab, text="Explain detections (show what changed)",
+                        variable=self.preview_var, command=self._on_setting_change).pack(anchor="w")
+
+        self.preview_lbl = tk.Label(tab, text="A preview of the changed pixels will\nappear here on the next detection.",
+                                    bg="#20232a", fg="#aaa", height=8, relief="groove", bd=1)
+        self.preview_lbl.pack(fill="x", pady=(PAD, 2))
+        self.preview_caption = ttk.Label(tab, text="Red highlights = pixels that changed.", foreground="#666")
+        self.preview_caption.pack(anchor="w")
+
+        ttk.Label(tab, text="Detection log:", foreground="#444").pack(anchor="w", pady=(PAD, 2))
+        logframe = ttk.Frame(tab)
+        logframe.pack(fill="both", expand=True)
+        self.log_text = tk.Text(logframe, height=7, wrap="none", state="disabled",
+                                font=("Monospace", 9), bg="#f6f6f6")
+        scroll = ttk.Scrollbar(logframe, command=self.log_text.yview)
+        self.log_text.configure(yscrollcommand=scroll.set)
+        scroll.pack(side="right", fill="y")
+        self.log_text.pack(side="left", fill="both", expand=True)
+
+    def _slider(self, parent, row, label, var, lo, hi, hint="", fmt="{:.0f}"):
         ttk = self.ttk
         ttk.Label(parent, text=label + ":").grid(row=row, column=0, sticky="w", pady=(4, 0))
         value_lbl = ttk.Label(parent, text="", style="Value.TLabel", width=6)
@@ -218,16 +316,14 @@ class ScreenWatchApp:
 
         def _changed(_evt=None):
             value_lbl.configure(text=fmt.format(var.get()))
-            cmd()
+            self._on_setting_change()
 
-        scale = ttk.Scale(parent, from_=lo, to=hi, variable=var, command=lambda _e: _changed())
-        scale.grid(row=row, column=1, sticky="ew", padx=PAD, pady=(4, 0))
+        ttk.Scale(parent, from_=lo, to=hi, variable=var, command=lambda _e: _changed()).grid(
+            row=row, column=1, sticky="ew", padx=PAD, pady=(4, 0))
         if hint:
             ttk.Label(parent, text=hint, foreground="#777", font=("Sans", 8)).grid(
                 row=row + 1, column=1, columnspan=2, sticky="w")
-        # Remember the value label so initial sync can populate it.
         setattr(self, f"_vallbl_{label}", value_lbl)
-        setattr(self, f"_valfmt_{label}", fmt)
 
     # ------------------------------------------------------- config <-> UI
     def _sync_widgets_from_config(self) -> None:
@@ -242,8 +338,10 @@ class ScreenWatchApp:
         self.delay_var.set(c.click_delay)
         self.maxclicks_var.set(c.max_clicks)
         self.sound_var.set(c.play_sound)
+        self.hotkey_enabled_var.set(c.hotkeys_enabled)
+        self.preview_var.set(c.show_detection_preview)
         self._refresh_target_labels()
-        # Populate slider value labels.
+        self._refresh_hotkey_labels()
         for label, var, fmt in (
             ("Sensitivity", self.sensitivity_var, "{:.0f}"),
             ("Check rate (fps)", self.fps_var, "{:.1f}"),
@@ -268,6 +366,8 @@ class ScreenWatchApp:
         except (ValueError, self.tk.TclError):
             c.max_clicks = 0
         c.play_sound = bool(self.sound_var.get())
+        c.hotkeys_enabled = bool(self.hotkey_enabled_var.get())
+        c.show_detection_preview = bool(self.preview_var.get())
         c.clamp()
 
     def _on_setting_change(self, *_args) -> None:
@@ -281,6 +381,10 @@ class ScreenWatchApp:
             self.point_lbl.configure(text=f"({c.click_x}, {c.click_y})")
         else:
             self.point_lbl.configure(text="(none)")
+
+    def _refresh_hotkey_labels(self) -> None:
+        self.toggle_hotkey_lbl.configure(text=pretty(self.config.hotkey_toggle))
+        self.quit_hotkey_lbl.configure(text=pretty(self.config.hotkey_quit))
 
     # ---------------------------------------------------------- selection
     def select_region(self) -> None:
@@ -330,7 +434,6 @@ class ScreenWatchApp:
 
     # -------------------------------------------------------------- events
     def _poll(self) -> None:
-        # Drain hotkey actions first (they may start/stop the monitor).
         try:
             while True:
                 action = self._actions.get_nowait()
@@ -359,19 +462,42 @@ class ScreenWatchApp:
         elif ev.kind == "clicked":
             self._set_status(ev.message, "#207a3f")
             self._flash()
+            self._log_detection(ev)
+            if ev.preview:
+                self._show_preview(ev)
         elif ev.kind == "limit":
             self._set_status(ev.message, "#b8860b")
         elif ev.kind == "error":
             self._set_status(ev.message, "#c0392b")
             self._update_running_ui()
 
-        # Update the activity meter + stats on any event that carries data.
         if ev.kind in ("tick", "clicked", "started"):
-            self.activity["value"] = min(100.0, ev.score * 100.0 * 3)  # scale for visibility
+            self.activity["value"] = min(100.0, ev.score * 100.0 * 3)
             self.stats_lbl.configure(
                 text=f"clicks: {ev.clicks}   ·   uptime: {_fmt_uptime(ev.elapsed)}"
                      f"   ·   change: {ev.score * 100:.2f}%"
             )
+
+    def _log_detection(self, ev: MonitorEvent) -> None:
+        line = f"{time.strftime('%H:%M:%S')}  change {ev.score * 100:6.2f}%  → click #{ev.clicks}\n"
+        self.log_text.configure(state="normal")
+        self.log_text.insert("end", line)
+        # Cap the log so an all-day run never grows memory unbounded.
+        if int(self.log_text.index("end-1c").split(".")[0]) > 500:
+            self.log_text.delete("1.0", "100.end")
+        self.log_text.see("end")
+        self.log_text.configure(state="disabled")
+
+    def _show_preview(self, ev: MonitorEvent) -> None:
+        try:
+            photo = self.tk.PhotoImage(data=ev.preview)
+        except Exception:  # noqa: BLE001 - never let a bad image break the loop
+            return
+        self._preview_photo = photo  # hold a reference against GC
+        self.preview_lbl.configure(image=photo, text="")
+        self.preview_caption.configure(
+            text=f"Red = the {ev.score * 100:.2f}% of pixels that changed and triggered the click."
+        )
 
     def _set_status(self, text: str, color: str = "#333") -> None:
         self.status_lbl.configure(text=text, foreground=color)
@@ -381,13 +507,68 @@ class ScreenWatchApp:
         self.root.after(120, lambda: self.activity.configure(value=0))
 
     # -------------------------------------------------------------- hotkeys
-    def _start_hotkeys(self) -> None:
+    def _apply_hotkeys(self) -> None:
+        self.hotkeys.stop()
+        self.config.hotkeys_enabled = bool(self.hotkey_enabled_var.get())
+        if not self.config.hotkeys_enabled:
+            self._set_hotkey_status("Global hotkeys are disabled.", "#777")
+            return
+        t, q = self.config.hotkey_toggle, self.config.hotkey_quit
+        if not (is_valid(t) and is_valid(q)):
+            self._set_hotkey_status("Invalid hotkey combination.", "#c0392b")
+            return
         ok = self.hotkeys.start({
-            HOTKEY_TOGGLE: lambda: self._actions.put("toggle"),
-            HOTKEY_QUIT: lambda: self._actions.put("quit"),
+            t: lambda: self._actions.put("toggle"),
+            q: lambda: self._actions.put("quit"),
         })
-        if not ok:
-            self.hotkey_lbl.configure(text="Global hotkeys unavailable (Wayland?) — use the buttons.")
+        if ok:
+            self._set_hotkey_status(
+                f"Active — {pretty(t)} start/stop · {pretty(q)} quit", "#207a3f")
+        else:
+            self._set_hotkey_status(
+                f"Unavailable (Wayland or blocked). Use the Start button. {self.hotkeys.error or ''}",
+                "#c0392b")
+
+    def _set_hotkey_status(self, text: str, color: str) -> None:
+        self.hotkey_status_lbl.configure(text=text, foreground=color)
+        # Mirror a compact version on the always-visible control bar.
+        self.hotkey_lbl.configure(text=text)
+
+    def _capture_hotkey(self, which: str) -> None:
+        tk = self.tk
+        dlg = tk.Toplevel(self.root)
+        dlg.title("Set hotkey")
+        dlg.transient(self.root)
+        dlg.resizable(False, False)
+        tk.Label(dlg, text="Press the key combination you want.\n\n(Esc to cancel)",
+                 padx=28, pady=24, font=("Sans", 11)).pack()
+        captured = {"combo": None}
+
+        def on_key(event):
+            if event.keysym in _MODIFIER_KEYSYMS:
+                return  # wait for a real (non-modifier) key
+            if event.keysym == "Escape" and not (event.state & 0x4C):
+                dlg.destroy()
+                return
+            combo = _event_to_hotkey(event)
+            if combo is None:
+                return
+            captured["combo"] = combo
+            dlg.destroy()
+
+        dlg.bind("<KeyPress>", on_key)
+        dlg.grab_set()
+        dlg.focus_force()
+        self.root.wait_window(dlg)
+
+        combo = captured["combo"]
+        if combo:
+            if which == "toggle":
+                self.config.hotkey_toggle = combo
+            else:
+                self.config.hotkey_quit = combo
+            self._refresh_hotkey_labels()
+            self._apply_hotkeys()
 
     # ------------------------------------------------------------- menu ops
     def save_settings(self) -> None:
@@ -399,10 +580,11 @@ class ScreenWatchApp:
             self._set_status(f"Could not save settings: {exc}", "#c0392b")
 
     def reload_settings(self) -> None:
-        self.monitor.stop()  # never leave an orphaned worker on the old config
+        self.monitor.stop()
         self.config = Config.load()
         self.monitor = Monitor(self.config, on_event=self._events.put)
         self._sync_widgets_from_config()
+        self._apply_hotkeys()
         self._update_running_ui()
         self._set_status("Settings reloaded.", "#207a3f")
 
@@ -419,8 +601,9 @@ class ScreenWatchApp:
             "• Check rate low keeps CPU usage minimal for long sessions.\n"
             "• Cooldown prevents rapid repeat clicks.\n"
             "• 'Previous frame' reacts to any motion; 'Start frame' reacts to a\n"
-            "  deviation from how the area looked when you pressed Start.\n\n"
-            "Hotkeys: Ctrl+Shift+S start/stop · Ctrl+Shift+Q quit",
+            "  deviation from how the area looked when you pressed Start.\n"
+            "• The 'Why / Log' tab shows exactly which pixels changed.\n\n"
+            "Hotkeys are customizable in the Hotkeys tab.",
         )
 
     # --------------------------------------------------------------- close
