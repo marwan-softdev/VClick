@@ -13,9 +13,9 @@ It is built to run **for hours** with a tiny CPU and memory footprint.
 
 ## Highlights
 
-- 🖼️ **Live point-and-drag selection** — draw the watch area and click point
-  right on top of your **live** screen (a light overlay, not a frozen snapshot);
-  press **Esc or right-click** to cancel.
+- 🖼️ **Truly live point-and-drag selection** — the screen is **never covered**.
+  You drag directly over your real, moving desktop (video keeps playing, UIs keep
+  animating), with no compositor required. Press **Esc or right-click** to cancel.
 - ⚡ **Low resource use** — the watched region is down-scaled to a tiny grayscale
   image and diffed with NumPy. On an 800×600 region this is **~0.14% of one CPU
   core at 5 fps** and a few dozen KiB of working memory. Made for 4–5 hour runs.
@@ -94,8 +94,22 @@ percentage that changed. Customize the hotkeys in the **Hotkeys** tab — click
 *Change…* and press the combination you want.
 
 > Tip: While selecting, press **Escape or right-click** to cancel without
-> changing anything. The overlay is lightly tinted so your live screen stays
-> visible underneath.
+> changing anything.
+
+#### How live selection works
+
+Most region pickers freeze a screenshot, or lay a translucent sheet over the
+desktop — which needs a compositing window manager and renders as a **solid
+black screen** without one. ScreenWatch does neither:
+
+* a 1×1, effectively invisible window takes a **global pointer grab**, so every
+  mouse move and click anywhere on screen is delivered with absolute
+  coordinates;
+* the selection is drawn as a few **thin border strips** that outline your
+  rectangle, plus a live `W × H` readout.
+
+Nothing is ever layered over your desktop, so what you drag over is the real
+thing, updating in real time — compositor or not.
 
 ### The window at a glance
 
@@ -215,7 +229,7 @@ tests/               headless unit + end-to-end tests
 
 ```bash
 pip install -r requirements.txt pytest
-python -m pytest -q          # 39 tests, all run headless (no display needed)
+python -m pytest -q          # 42 tests, all run headless (no display needed)
 ```
 
 The core (config, capture, detector, monitor) has **no import-time GUI or input

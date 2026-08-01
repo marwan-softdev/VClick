@@ -93,3 +93,30 @@ def test_gui_keysym_mapping_is_importable_headlessly():
     assert _keysym_to_token("Return") == "<enter>"
     assert _keysym_to_token("space") == "<space>"
     assert _keysym_to_token("Control_L") is None
+
+
+# -- live (non-covering) selector geometry ---------------------------------
+def test_rect_from_points_normalises_any_drag_direction():
+    from screenwatch.region_selector import _rect_from_points
+
+    expected = (100, 50, 300, 250)
+    # All four drag directions must yield the same rectangle.
+    assert _rect_from_points(100, 50, 400, 300) == expected   # ↘
+    assert _rect_from_points(400, 300, 100, 50) == expected   # ↖
+    assert _rect_from_points(400, 50, 100, 300) == expected   # ↙
+    assert _rect_from_points(100, 300, 400, 50) == expected   # ↗
+
+
+def test_rect_from_points_zero_size_click():
+    from screenwatch.region_selector import _rect_from_points
+
+    assert _rect_from_points(10, 10, 10, 10) == (10, 10, 0, 0)
+
+
+def test_region_selector_imports_without_display():
+    # The live selector must not import tkinter at module load.
+    import screenwatch.region_selector as rs
+
+    assert hasattr(rs, "select_region")
+    assert hasattr(rs, "select_point")
+    assert hasattr(rs, "_LiveSelector")
