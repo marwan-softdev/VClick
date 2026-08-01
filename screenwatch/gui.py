@@ -14,6 +14,7 @@ from .config import CLICK_BUTTONS, CLICK_TYPES, Config
 from .history import DetectionHistory
 from .hotkeys import HotkeyManager, is_valid, pretty
 from .monitor import Monitor, MonitorEvent
+from .sound import Beeper
 
 PAD = 8
 
@@ -97,6 +98,8 @@ class ScreenWatchApp:
         self.monitor = Monitor(self.config, on_event=self._events.put)
         self.hotkeys = HotkeyManager()
         self._history = DetectionHistory(self.config.log_history)
+        self._beeper = Beeper(root)
+        self._row_seq = 0           # monotonic, unique per window (see _log_detection)
         self._selected = None       # the Detection currently shown
         self._preview_photo = None  # keep a ref so Tk doesn't GC the image
 
@@ -296,12 +299,17 @@ class ScreenWatchApp:
         ttk.Label(tab, text="Click any row in the log to see why that click happened.",
                   foreground="#666").pack(anchor="w", pady=(2, PAD))
 
+        # A resizable split: the log on top, the picture below, so neither can
+        # crowd the other out and the user can drag the divider.
+        split = ttk.PanedWindow(tab, orient="vertical")
+        split.pack(fill="both", expand=True)
+
         # --- the log itself: one selectable row per detection ---
-        logframe = ttk.Frame(tab)
-        logframe.pack(fill="both", expand=True)
+        logframe = ttk.Frame(split)
+        split.add(logframe, weight=1)
         cols = ("click", "time", "change", "image")
         self.log_tree = ttk.Treeview(logframe, columns=cols, show="headings",
-                                     height=7, selectmode="browse")
+                                     height=6, selectmode="browse")
         for col, text, width, anchor in (
             ("click", "#", 50, "center"),
             ("time", "Time", 90, "center"),
@@ -316,6 +324,12 @@ class ScreenWatchApp:
         self.log_tree.pack(side="left", fill="both", expand=True)
         self.log_tree.bind("<<TreeviewSelect>>", self._on_log_select)
         self.log_tree.bind("<Double-1>", lambda e: self.open_preview_window())
+        # X11 reports the wheel as buttons 4/5; bind them explicitly so the log
+        # scrolls under the cursor without needing focus.
+        self.log_tree.bind("<Button-4>", lambda e: self.log_tree.yview_scroll(-3, "units"))
+        self.log_tree.bind("<Button-5>", lambda e: self.log_tree.yview_scroll(3, "units"))
+        self.log_tree.bind("<MouseWheel>",
+                           lambda e: self.log_tree.yview_scroll(-3 if e.delta > 0 else 3, "units"))
 
         # --- controls ---
         btns = ttk.Frame(tab)
@@ -330,15 +344,17 @@ class ScreenWatchApp:
                                    state="disabled")
         self.view_btn.pack(side="right", padx=4)
 
-        # --- the picture for the selected row ---
+        # --- the picture for the selected row (lower half of the split) ---
+        picframe = ttk.Frame(split)
+        split.add(picframe, weight=2)
         self.preview_lbl = tk.Label(
-            tab,
+            picframe,
             text="No detection selected yet.\nWhen a click is triggered it appears in the log above.",
-            bg="#20232a", fg="#aaa", height=8, relief="groove", bd=1)
-        self.preview_lbl.pack(fill="x", pady=(PAD, 2))
-        self.preview_caption = ttk.Label(tab, text="Red highlights = the pixels that changed.",
-                                         foreground="#666", wraplength=440)
-        self.preview_caption.pack(anchor="w")
+            bg="#20232a", fg="#aaa", relief="groove", bd=1)
+        self.preview_lbl.pack(fill="both", expand=True)
+        self.preview_caption = ttk.Label(picframe, text="Red = what changed · cyan box = where.",
+                                         foreground="#666", wraplength=460, justify="left")
+        self.preview_caption.pack(anchor="w", pady=(4, 0))
 
     def _slider(self, parent, row, label, var, lo, hi, hint="", fmt="{:.0f}"):
         ttk = self.ttk
@@ -466,23 +482,45 @@ class ScreenWatchApp:
 
     # -------------------------------------------------------------- events
     def _poll(self) -> None:
-        try:
-            while True:
-                action = self._actions.get_nowait()
-                if action == "toggle":
-                    self.toggle()
-                elif action == "quit":
-                    self.on_close()
-                    return
-        except queue.Empty:
-            pass
+        """Drain hotkey actions and monitor events onto the Tk main loop.
 
+        This must never raise: if it does, the ``after`` chain below is not
+        rescheduled and the whole UI silently stops updating (log, status *and*
+        global hotkeys, which are delivered through ``self._actions``).  So the
+        body is fully guarded and rescheduling happens in ``finally``.
+        """
+        quitting = False
         try:
             while True:
-                self._handle_event(self._events.get_nowait())
-        except queue.Empty:
-            pass
-        self.root.after(100, self._poll)
+                try:
+                    action = self._actions.get_nowait()
+                except queue.Empty:
+                    break
+                try:
+                    if action == "toggle":
+                        self._note_hotkey("start/stop")
+                        self.toggle()
+                    elif action == "quit":
+                        quitting = True
+                        self.on_close()
+                        break
+                except Exception as exc:  # noqa: BLE001
+                    self._set_status(f"Hotkey action failed: {exc}", "#c0392b")
+
+            if not quitting:
+                while True:
+                    try:
+                        ev = self._events.get_nowait()
+                    except queue.Empty:
+                        break
+                    try:
+                        self._handle_event(ev)
+                    except Exception as exc:  # noqa: BLE001 - one bad event
+                        # must never kill the loop
+                        self._set_status(f"UI error: {exc}", "#c0392b")
+        finally:
+            if not quitting:
+                self.root.after(100, self._poll)
 
     def _handle_event(self, ev: MonitorEvent) -> None:
         if ev.kind == "started":
@@ -494,6 +532,8 @@ class ScreenWatchApp:
         elif ev.kind == "clicked":
             self._set_status(ev.message, "#207a3f")
             self._flash()
+            if self.config.play_sound:
+                self._beeper.play()
             # Records the detection and, when following, selects it — which
             # renders its image via the tree's selection handler.
             self._log_detection(ev)
@@ -513,11 +553,16 @@ class ScreenWatchApp:
     def _log_detection(self, ev: MonitorEvent) -> None:
         """Record a detection and add a selectable row for it."""
         self._history.set_capacity(self.config.log_history)
-        det = self._history.add(index=ev.clicks, score=ev.score, preview=ev.preview)
+        # Row ids must be unique for the lifetime of the window.  The monitor's
+        # click counter restarts at 1 every time monitoring is restarted, so
+        # using it directly would collide with an existing row.
+        self._row_seq += 1
+        det = self._history.add(index=self._row_seq, score=ev.score, preview=ev.preview,
+                                click_no=ev.clicks)
 
         self.log_tree.insert(
             "", "end", iid=str(det.index),
-            values=(det.index, det.time_str, det.score_str, "🖼" if det.has_image else "—"),
+            values=(ev.clicks, det.time_str, det.score_str, "🖼" if det.has_image else "—"),
         )
         # Drop rows whose records have aged out of the bounded history.
         live = {str(d.index) for d in self._history}
@@ -547,7 +592,7 @@ class ScreenWatchApp:
                 image="", text="No image was captured for this detection.\n"
                                 "Enable “Explain detections” to capture them.")
             self.preview_caption.configure(
-                text=f"Click #{det.index} at {det.time_str} — {det.score_str} of the region changed.")
+                text=f"Click #{det.click_no} at {det.time_str} — {det.score_str} of the region changed.")
             self.view_btn.configure(state="disabled")
             self.save_btn.configure(state="disabled")
             return
@@ -555,10 +600,17 @@ class ScreenWatchApp:
             photo = self.tk.PhotoImage(data=det.preview)
         except Exception:  # noqa: BLE001 - never let a bad image break the UI
             return
+        # Shrink to fit the panel so a large region can never blow up the
+        # layout (PhotoImage only scales by integer factors).
+        avail = max(120, self.preview_lbl.winfo_width() - 8)
+        if photo.width() > avail:
+            import math
+
+            photo = photo.subsample(max(2, math.ceil(photo.width() / avail)))
         self._preview_photo = photo  # hold a reference against GC
         self.preview_lbl.configure(image=photo, text="")
         self.preview_caption.configure(
-            text=f"Click #{det.index} at {det.time_str} — red marks the {det.score_str} "
+            text=f"Click #{det.click_no} at {det.time_str} — red marks the {det.score_str} "
                  f"of the region that changed and triggered this click.")
         self.view_btn.configure(state="normal")
         self.save_btn.configure(state="normal")
@@ -570,7 +622,7 @@ class ScreenWatchApp:
             return
         tk = self.tk
         win = tk.Toplevel(self.root)
-        win.title(f"Why click #{det.index} fired — {det.time_str}")
+        win.title(f"Why click #{det.click_no} fired — {det.time_str}")
         try:
             photo = tk.PhotoImage(data=det.preview)
             # Nearest-neighbour magnify so small regions are actually readable.
@@ -601,7 +653,7 @@ class ScreenWatchApp:
             return
         path = filedialog.asksaveasfilename(
             parent=self.root, defaultextension=".png",
-            initialfile=f"screenwatch-click-{det.index}.png",
+            initialfile=f"screenwatch-click-{det.click_no}.png",
             filetypes=[("PNG image", "*.png")],
         )
         if not path:
@@ -653,6 +705,14 @@ class ScreenWatchApp:
             self._set_hotkey_status(
                 f"Unavailable (Wayland or blocked). Use the Start button. {self.hotkeys.error or ''}",
                 "#c0392b")
+
+    def _note_hotkey(self, which: str) -> None:
+        """Confirm on screen that a global hotkey was actually received."""
+        import time as _time
+
+        stamp = _time.strftime("%H:%M:%S")
+        self.hotkey_status_lbl.configure(
+            text=f"✔ {which} hotkey received at {stamp}", foreground="#207a3f")
 
     def _set_hotkey_status(self, text: str, color: str) -> None:
         self.hotkey_status_lbl.configure(text=text, foreground=color)

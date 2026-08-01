@@ -23,10 +23,13 @@ from typing import Deque, Iterator, List, Optional
 class Detection:
     """One "the region changed, so I clicked" event."""
 
-    index: int                      # click number, 1-based
+    index: int                      # unique row id for the window's lifetime
     score: float                    # fraction of the region that changed (0..1)
     timestamp: float = field(default_factory=time.time)
     preview: Optional[str] = None   # base64 PNG explaining the change
+    # The monitor's click counter, which restarts at 1 on every run — good for
+    # display, unusable as an id (see ScreenWatchApp._log_detection).
+    click_no: int = 0
 
     @property
     def has_image(self) -> bool:
@@ -49,13 +52,14 @@ class DetectionHistory:
         self._items: Deque[Detection] = deque(maxlen=self.capacity)
 
     def add(self, index: int, score: float, preview: Optional[str] = None,
-            timestamp: Optional[float] = None) -> Detection:
+            timestamp: Optional[float] = None, click_no: int = 0) -> Detection:
         """Record a detection and return it.  Oldest entries are evicted."""
         det = Detection(
             index=index,
             score=score,
             preview=preview,
             timestamp=time.time() if timestamp is None else timestamp,
+            click_no=click_no or index,
         )
         self._items.append(det)
         return det

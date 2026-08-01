@@ -77,6 +77,8 @@ def build_change_preview(
 
     from PIL import Image
 
+    from PIL import ImageDraw
+
     bgra = np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 4)
     rgb = bgra[:, :, [2, 1, 0]].astype(np.float32)  # BGR -> RGB
 
@@ -85,12 +87,35 @@ def build_change_preview(
     mask_img = Image.fromarray((mask.astype(np.uint8) * 255), mode="L").resize(
         (width, height), resample=Image.NEAREST
     )
-    m = (np.asarray(mask_img) > 127)[:, :, None]
+    full = np.asarray(mask_img) > 127
+    m = full[:, :, None]
 
-    # Dim unchanged areas slightly and paint changed areas red so they pop.
-    red = np.array([255.0, 60.0, 60.0])
-    out = np.where(m, 0.35 * rgb + 0.65 * red, 0.6 * rgb)
+    # Unchanged pixels are converted to a DARK GREY-SCALE version of the
+    # original.  Desaturating them completely is what makes the highlight
+    # unmistakable: a red tint on top of already-warm content (an orange
+    # sprite, a red button) is nearly invisible, but red against grey is not.
+    luma = (0.299 * rgb[:, :, 0] + 0.587 * rgb[:, :, 1] + 0.114 * rgb[:, :, 2])
+    grey = np.repeat((luma * 0.45)[:, :, None], 3, axis=2)
+
+    # Changed pixels keep a little of their own luminance for shape, but are
+    # pushed hard towards a saturated red.
+    hot = np.empty_like(rgb)
+    hot[:, :, 0] = np.clip(150.0 + 0.42 * luma, 0, 255)   # strong red
+    hot[:, :, 1] = np.clip(0.22 * luma, 0, 255)           # little green
+    hot[:, :, 2] = np.clip(0.22 * luma, 0, 255)           # little blue
+
+    out = np.where(m, hot, grey)
     img = Image.fromarray(out.clip(0, 255).astype(np.uint8), mode="RGB")
+
+    # Outline the changed area so small changes are easy to spot at a glance.
+    rows = np.flatnonzero(full.any(axis=1))
+    cols = np.flatnonzero(full.any(axis=0))
+    if rows.size and cols.size:
+        draw = ImageDraw.Draw(img)
+        draw.rectangle(
+            [int(cols[0]), int(rows[0]), int(cols[-1]), int(rows[-1])],
+            outline=(0, 255, 255), width=max(1, min(width, height) // 100),
+        )
 
     img.thumbnail((out_max, out_max), Image.NEAREST)
     buf = io.BytesIO()

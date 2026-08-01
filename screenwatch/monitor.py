@@ -182,8 +182,9 @@ class Monitor:
             button=cfg.click_button,
             double=(cfg.click_type == "double"),
         )
-        if cfg.play_sound:
-            print("\a", end="", flush=True)
+        # Audible feedback is raised by the GUI (see ScreenWatchApp), which owns
+        # a Beeper and can fall back to the Tk bell; doing it here would mean
+        # writing BEL to a stdout nobody is watching.
 
     def _emit(self, event: MonitorEvent) -> None:
         try:

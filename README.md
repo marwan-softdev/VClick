@@ -102,12 +102,15 @@ Every triggered click becomes a row in the **Why / Log** tab:
 | 2 | 14:19:55 | 1.08% | 🖼 |
 | 1 | 14:18:30 | 12.44% | 🖼 |
 
-**Click any row** to see a picture of what triggered that specific click — the
-watched region at that moment, with the pixels responsible highlighted in red.
+**Click any row** to see a picture of what triggered that specific click. Areas
+that did **not** change are rendered in dark greyscale, the pixels that *did*
+change are painted bright red, and a cyan box outlines where they are — so the
+highlight stays obvious even over already-red or orange content.
 From there you can:
 
 * **View larger ⤢** (or double-click the row) to open it magnified in its own window;
 * **Save image…** to export it as a PNG;
+* drag the divider between the log and the picture to resize either half;
 * untick **Follow newest** to stay on an older detection while monitoring continues;
 * **Clear** to empty the log.
 
@@ -172,7 +175,7 @@ see the picture of what triggered it.
 | **Cooldown (s)** | Minimum time between clicks; also the settle time so the click’s own visual effect doesn’t re-trigger detection. |
 | **Delay (s)** | Wait this long after detecting a change before clicking. |
 | **Max clicks** | Auto-stop after N clicks (0 = unlimited). |
-| **Beep on each click** | Terminal bell feedback. |
+| **Beep on each click** | Plays a real notification sound (`canberra-gtk-play`, `paplay`, `pw-play`, `ffplay` or `aplay`), falling back to the X11 bell. Install one of those if you hear nothing. |
 | **Explain detections** | Capture an image of which pixels changed, viewable per-click in the “Why / Log” tab. Turn off for the absolute minimum overhead. |
 | **Log history** | How many past detections (and their images) stay browsable. Bounded so multi-hour runs can't grow memory — typical screen content is under 1 KiB per image. |
 | **Hotkeys** | Enable/disable global hotkeys and record custom combinations for start/stop and quit. |
@@ -207,6 +210,9 @@ and raise the **Noise filter** so trivial changes are skipped.
 | Screen capture | ✅ `mss` | ⚠️ region capture is restricted by the compositor |
 | Clicking | ✅ `pynput` | ✅ via `ydotool` (needs `ydotoold` running) |
 | Global hotkeys | ✅ `pynput` | ❌ usually blocked — use the on-screen button |
+
+The Hotkeys tab confirms receipt (“✔ start/stop hotkey received at …”) whenever a
+combination reaches the app, so you can tell a dead hotkey from a dead action.
 
 **Recommendation:** for the smoothest experience, run in an **X11 session**
 (pick “Xorg”/“X11” at your login screen). ScreenWatch runs fine under XWayland.
@@ -251,7 +257,7 @@ tests/               headless unit + end-to-end tests
 
 ```bash
 pip install -r requirements.txt pytest
-python -m pytest -q          # 53 tests, all run headless (no display needed)
+python -m pytest -q          # 60 tests, all run headless (no display needed)
 ```
 
 The core (config, capture, detector, monitor) has **no import-time GUI or input
