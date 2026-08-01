@@ -25,8 +25,9 @@ It is built to run **for hours** with a tiny CPU and memory footprint.
   to *deviation from a starting state* (vs. the frame captured on Start).
 - 🖱️ **Flexible clicking** — left / right / middle, single or double, optional
   delay, and a **cooldown** so it never machine-guns clicks.
-- 🔍 **"Why did it click?"** — an optional panel shows the watched region with the
-  exact pixels that changed highlighted in red, plus a timestamped detection log.
+- 🔍 **"Why did it click?"** — every click is logged as a row you can click on to
+  see a picture of exactly what triggered it: the watched region with the
+  responsible pixels highlighted in red. View it larger, or save it as a PNG.
 - ⌨️ **Customizable global hotkeys** — record any combination for start/stop and
   quit (defaults `Ctrl+Shift+S` / `Ctrl+Shift+Q`) right in the Hotkeys tab (X11).
 - 💾 **Remembers everything** — settings and selections persist between runs.
@@ -88,10 +89,30 @@ Check your environment at any time:
    your point. The status bar shows live activity, click count, and uptime.
 5. **Press ■ Stop** (or your start/stop hotkey) when you’re done.
 
-Open the **Why / Log** tab to watch each detection: it shows the region with the
-changed pixels highlighted in red and logs every click with a timestamp and the
-percentage that changed. Customize the hotkeys in the **Hotkeys** tab — click
-*Change…* and press the combination you want.
+Customize the hotkeys in the **Hotkeys** tab — click *Change…* and press the
+combination you want.
+
+### Seeing *why* a click happened
+
+Every triggered click becomes a row in the **Why / Log** tab:
+
+| # | Time | Changed | Image |
+|---|---|---|---|
+| 3 | 14:22:07 | 4.61% | 🖼 |
+| 2 | 14:19:55 | 1.08% | 🖼 |
+| 1 | 14:18:30 | 12.44% | 🖼 |
+
+**Click any row** to see a picture of what triggered that specific click — the
+watched region at that moment, with the pixels responsible highlighted in red.
+From there you can:
+
+* **View larger ⤢** (or double-click the row) to open it magnified in its own window;
+* **Save image…** to export it as a PNG;
+* untick **Follow newest** to stay on an older detection while monitoring continues;
+* **Clear** to empty the log.
+
+Turn the whole thing off with the *Explain detections* checkbox if you want the
+absolute minimum overhead.
 
 > Tip: While selecting, press **Escape or right-click** to cancel without
 > changing anything.
@@ -134,8 +155,8 @@ Watches a screen area and clicks the instant it changes.
    Active — Ctrl+Shift+S start/stop · Ctrl+Shift+Q quit
 ```
 
-The **Why / Log** tab shows a highlighted image of exactly which pixels changed
-on the last detection, plus a scrolling, timestamped log of every click.
+The **Why / Log** tab keeps a browsable history: click any logged detection to
+see the picture of what triggered it.
 
 ---
 
@@ -152,7 +173,8 @@ on the last detection, plus a scrolling, timestamped log of every click.
 | **Delay (s)** | Wait this long after detecting a change before clicking. |
 | **Max clicks** | Auto-stop after N clicks (0 = unlimited). |
 | **Beep on each click** | Terminal bell feedback. |
-| **Explain detections** | Capture and show which pixels changed (the “Why / Log” tab). Turn off for the absolute minimum overhead. |
+| **Explain detections** | Capture an image of which pixels changed, viewable per-click in the “Why / Log” tab. Turn off for the absolute minimum overhead. |
+| **Log history** | How many past detections (and their images) stay browsable. Bounded so multi-hour runs can't grow memory — typical screen content is under 1 KiB per image. |
 | **Hotkeys** | Enable/disable global hotkeys and record custom combinations for start/stop and quit. |
 
 Settings are saved to `~/.config/screenwatch/config.json` on exit (or via
@@ -229,7 +251,7 @@ tests/               headless unit + end-to-end tests
 
 ```bash
 pip install -r requirements.txt pytest
-python -m pytest -q          # 42 tests, all run headless (no display needed)
+python -m pytest -q          # 53 tests, all run headless (no display needed)
 ```
 
 The core (config, capture, detector, monitor) has **no import-time GUI or input

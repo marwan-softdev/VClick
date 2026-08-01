@@ -7,11 +7,11 @@ Kept in one file for easy distribution.  Tkinter is imported at call time inside
 from __future__ import annotations
 
 import queue
-import time
 from typing import Optional
 
 from . import __app_name__, __version__
 from .config import CLICK_BUTTONS, CLICK_TYPES, Config
+from .history import DetectionHistory
 from .hotkeys import HotkeyManager, is_valid, pretty
 from .monitor import Monitor, MonitorEvent
 
@@ -96,6 +96,8 @@ class ScreenWatchApp:
         self._actions: "queue.Queue[str]" = queue.Queue()
         self.monitor = Monitor(self.config, on_event=self._events.put)
         self.hotkeys = HotkeyManager()
+        self._history = DetectionHistory(self.config.log_history)
+        self._selected = None       # the Detection currently shown
         self._preview_photo = None  # keep a ref so Tk doesn't GC the image
 
         root.title(f"{__app_name__} — auto-click on change")
@@ -289,24 +291,54 @@ class ScreenWatchApp:
         nb.add(tab, text="Why / Log")
 
         self.preview_var = tk.BooleanVar()
-        ttk.Checkbutton(tab, text="Explain detections (show what changed)",
+        ttk.Checkbutton(tab, text="Explain detections (capture an image of what changed)",
                         variable=self.preview_var, command=self._on_setting_change).pack(anchor="w")
+        ttk.Label(tab, text="Click any row in the log to see why that click happened.",
+                  foreground="#666").pack(anchor="w", pady=(2, PAD))
 
-        self.preview_lbl = tk.Label(tab, text="A preview of the changed pixels will\nappear here on the next detection.",
-                                    bg="#20232a", fg="#aaa", height=8, relief="groove", bd=1)
-        self.preview_lbl.pack(fill="x", pady=(PAD, 2))
-        self.preview_caption = ttk.Label(tab, text="Red highlights = pixels that changed.", foreground="#666")
-        self.preview_caption.pack(anchor="w")
-
-        ttk.Label(tab, text="Detection log:", foreground="#444").pack(anchor="w", pady=(PAD, 2))
+        # --- the log itself: one selectable row per detection ---
         logframe = ttk.Frame(tab)
         logframe.pack(fill="both", expand=True)
-        self.log_text = tk.Text(logframe, height=7, wrap="none", state="disabled",
-                                font=("Monospace", 9), bg="#f6f6f6")
-        scroll = ttk.Scrollbar(logframe, command=self.log_text.yview)
-        self.log_text.configure(yscrollcommand=scroll.set)
+        cols = ("click", "time", "change", "image")
+        self.log_tree = ttk.Treeview(logframe, columns=cols, show="headings",
+                                     height=7, selectmode="browse")
+        for col, text, width, anchor in (
+            ("click", "#", 50, "center"),
+            ("time", "Time", 90, "center"),
+            ("change", "Changed", 90, "e"),
+            ("image", "Image", 70, "center"),
+        ):
+            self.log_tree.heading(col, text=text)
+            self.log_tree.column(col, width=width, anchor=anchor, stretch=(col == "change"))
+        scroll = ttk.Scrollbar(logframe, orient="vertical", command=self.log_tree.yview)
+        self.log_tree.configure(yscrollcommand=scroll.set)
         scroll.pack(side="right", fill="y")
-        self.log_text.pack(side="left", fill="both", expand=True)
+        self.log_tree.pack(side="left", fill="both", expand=True)
+        self.log_tree.bind("<<TreeviewSelect>>", self._on_log_select)
+        self.log_tree.bind("<Double-1>", lambda e: self.open_preview_window())
+
+        # --- controls ---
+        btns = ttk.Frame(tab)
+        btns.pack(fill="x", pady=(PAD, 0))
+        self.follow_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(btns, text="Follow newest", variable=self.follow_var).pack(side="left")
+        ttk.Button(btns, text="Clear", command=self.clear_log).pack(side="right")
+        self.save_btn = ttk.Button(btns, text="Save image…", command=self.save_preview_image,
+                                   state="disabled")
+        self.save_btn.pack(side="right", padx=4)
+        self.view_btn = ttk.Button(btns, text="View larger ⤢", command=self.open_preview_window,
+                                   state="disabled")
+        self.view_btn.pack(side="right", padx=4)
+
+        # --- the picture for the selected row ---
+        self.preview_lbl = tk.Label(
+            tab,
+            text="No detection selected yet.\nWhen a click is triggered it appears in the log above.",
+            bg="#20232a", fg="#aaa", height=8, relief="groove", bd=1)
+        self.preview_lbl.pack(fill="x", pady=(PAD, 2))
+        self.preview_caption = ttk.Label(tab, text="Red highlights = the pixels that changed.",
+                                         foreground="#666", wraplength=440)
+        self.preview_caption.pack(anchor="w")
 
     def _slider(self, parent, row, label, var, lo, hi, hint="", fmt="{:.0f}"):
         ttk = self.ttk
@@ -462,9 +494,9 @@ class ScreenWatchApp:
         elif ev.kind == "clicked":
             self._set_status(ev.message, "#207a3f")
             self._flash()
+            # Records the detection and, when following, selects it — which
+            # renders its image via the tree's selection handler.
             self._log_detection(ev)
-            if ev.preview:
-                self._show_preview(ev)
         elif ev.kind == "limit":
             self._set_status(ev.message, "#b8860b")
         elif ev.kind == "error":
@@ -479,25 +511,118 @@ class ScreenWatchApp:
             )
 
     def _log_detection(self, ev: MonitorEvent) -> None:
-        line = f"{time.strftime('%H:%M:%S')}  change {ev.score * 100:6.2f}%  → click #{ev.clicks}\n"
-        self.log_text.configure(state="normal")
-        self.log_text.insert("end", line)
-        # Cap the log so an all-day run never grows memory unbounded.
-        if int(self.log_text.index("end-1c").split(".")[0]) > 500:
-            self.log_text.delete("1.0", "100.end")
-        self.log_text.see("end")
-        self.log_text.configure(state="disabled")
+        """Record a detection and add a selectable row for it."""
+        self._history.set_capacity(self.config.log_history)
+        det = self._history.add(index=ev.clicks, score=ev.score, preview=ev.preview)
 
-    def _show_preview(self, ev: MonitorEvent) -> None:
+        self.log_tree.insert(
+            "", "end", iid=str(det.index),
+            values=(det.index, det.time_str, det.score_str, "🖼" if det.has_image else "—"),
+        )
+        # Drop rows whose records have aged out of the bounded history.
+        live = {str(d.index) for d in self._history}
+        for iid in self.log_tree.get_children():
+            if iid not in live:
+                self.log_tree.delete(iid)
+
+        if self.follow_var.get():
+            self.log_tree.selection_set(str(det.index))
+            self.log_tree.see(str(det.index))
+
+    def _on_log_select(self, _event=None) -> None:
+        """Show the picture for whichever detection the user picked."""
+        sel = self.log_tree.selection()
+        if not sel:
+            return
+        det = self._history.by_index(int(sel[0]))
+        if det is None:
+            return
+        self._selected = det
+        self._render_preview(det)
+
+    def _render_preview(self, det) -> None:
+        if not det.has_image:
+            self._preview_photo = None
+            self.preview_lbl.configure(
+                image="", text="No image was captured for this detection.\n"
+                                "Enable “Explain detections” to capture them.")
+            self.preview_caption.configure(
+                text=f"Click #{det.index} at {det.time_str} — {det.score_str} of the region changed.")
+            self.view_btn.configure(state="disabled")
+            self.save_btn.configure(state="disabled")
+            return
         try:
-            photo = self.tk.PhotoImage(data=ev.preview)
-        except Exception:  # noqa: BLE001 - never let a bad image break the loop
+            photo = self.tk.PhotoImage(data=det.preview)
+        except Exception:  # noqa: BLE001 - never let a bad image break the UI
             return
         self._preview_photo = photo  # hold a reference against GC
         self.preview_lbl.configure(image=photo, text="")
         self.preview_caption.configure(
-            text=f"Red = the {ev.score * 100:.2f}% of pixels that changed and triggered the click."
+            text=f"Click #{det.index} at {det.time_str} — red marks the {det.score_str} "
+                 f"of the region that changed and triggered this click.")
+        self.view_btn.configure(state="normal")
+        self.save_btn.configure(state="normal")
+
+    def open_preview_window(self) -> None:
+        """Open the selected detection's image in a larger, magnified window."""
+        det = self._selected
+        if det is None or not det.has_image:
+            return
+        tk = self.tk
+        win = tk.Toplevel(self.root)
+        win.title(f"Why click #{det.index} fired — {det.time_str}")
+        try:
+            photo = tk.PhotoImage(data=det.preview)
+            # Nearest-neighbour magnify so small regions are actually readable.
+            if photo.width() < 500:
+                photo = photo.zoom(2)
+        except Exception:  # noqa: BLE001
+            win.destroy()
+            return
+        win._photo = photo  # keep a reference on the window itself
+        tk.Label(win, image=photo, bd=0).pack(padx=10, pady=(10, 4))
+        self.ttk.Label(
+            win,
+            text=f"{det.score_str} of the watched region changed at {det.time_str}. "
+                 f"Red = the pixels responsible.",
+            wraplength=max(360, photo.width()), foreground="#444",
+        ).pack(padx=10, pady=(0, 8))
+        self.ttk.Button(win, text="Close", command=win.destroy).pack(pady=(0, 10))
+        win.bind("<Escape>", lambda e: win.destroy())
+        win.transient(self.root)
+
+    def save_preview_image(self) -> None:
+        """Export the selected detection's image as a PNG."""
+        import base64
+        from tkinter import filedialog, messagebox
+
+        det = self._selected
+        if det is None or not det.has_image:
+            return
+        path = filedialog.asksaveasfilename(
+            parent=self.root, defaultextension=".png",
+            initialfile=f"screenwatch-click-{det.index}.png",
+            filetypes=[("PNG image", "*.png")],
         )
+        if not path:
+            return
+        try:
+            with open(path, "wb") as fh:
+                fh.write(base64.b64decode(det.preview))
+            self._set_status(f"Saved image to {path}", "#207a3f")
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Save failed", str(exc))
+
+    def clear_log(self) -> None:
+        self._history.clear()
+        self._selected = None
+        self._preview_photo = None
+        for iid in self.log_tree.get_children():
+            self.log_tree.delete(iid)
+        self.preview_lbl.configure(image="", text="Log cleared.")
+        self.preview_caption.configure(text="Red highlights = the pixels that changed.")
+        self.view_btn.configure(state="disabled")
+        self.save_btn.configure(state="disabled")
 
     def _set_status(self, text: str, color: str = "#333") -> None:
         self.status_lbl.configure(text=text, foreground=color)
@@ -583,6 +708,7 @@ class ScreenWatchApp:
         self.monitor.stop()
         self.config = Config.load()
         self.monitor = Monitor(self.config, on_event=self._events.put)
+        self._history.set_capacity(self.config.log_history)
         self._sync_widgets_from_config()
         self._apply_hotkeys()
         self._update_running_ui()

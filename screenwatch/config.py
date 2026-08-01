@@ -116,6 +116,9 @@ class Config:
 
     # Show a visual explanation (highlighted diff) of each detected change.
     show_detection_preview: bool = True
+    # How many past detections (with their images) stay browsable in the log.
+    # Bounded so a multi-hour session cannot grow memory without limit.
+    log_history: int = 30
 
     # -- validation --------------------------------------------------------
     def clamp(self) -> "Config":
@@ -128,6 +131,7 @@ class Config:
         self.max_clicks = max(0, int(self.max_clicks))
         self.warmup_frames = int(_clamp(self.warmup_frames, 0, 100))
         self.downscale_max = int(_clamp(self.downscale_max, 16, 1000))
+        self.log_history = int(_clamp(self.log_history, 5, 200))
         if self.click_button not in CLICK_BUTTONS:
             self.click_button = "left"
         if self.click_type not in CLICK_TYPES:
