@@ -12,7 +12,7 @@ from typing import Optional
 from . import __app_name__, __version__
 from .config import CLICK_BUTTONS, CLICK_TYPES, Config
 from .history import DetectionHistory
-from .hotkeys import HotkeyManager, is_valid, pretty
+from .hotkeys import HotkeyManager, is_valid, parse_hotkey, pretty
 from .monitor import Monitor, MonitorEvent
 from .sound import Beeper
 
@@ -69,14 +69,10 @@ def _event_to_hotkey(event) -> Optional[str]:
     if key is None:
         return None
     combo = "+".join(mods + [key])
-    # Confirm pynput can actually register it before we accept it.
-    try:
-        from pynput import keyboard
-
-        keyboard.HotKey.parse(combo)
-    except Exception:  # noqa: BLE001
-        return None
-    return combo
+    # Validate with our own parser (the one that will do the matching), not
+    # pynput's — that keeps capture working without a display and guarantees
+    # the captured string is exactly what HotkeyManager can match.
+    return combo if parse_hotkey(combo) is not None else None
 
 
 class ScreenWatchApp:
@@ -95,6 +91,7 @@ class ScreenWatchApp:
 
         self._events: "queue.Queue[MonitorEvent]" = queue.Queue()
         self._actions: "queue.Queue[str]" = queue.Queue()
+        self._observed: "queue.Queue[str]" = queue.Queue()
         self.monitor = Monitor(self.config, on_event=self._events.put)
         self.hotkeys = HotkeyManager()
         self._history = DetectionHistory(self.config.log_history)
@@ -281,12 +278,23 @@ class ScreenWatchApp:
 
         self.hotkey_status_lbl = ttk.Label(tab, text="", foreground="#555", wraplength=440)
         self.hotkey_status_lbl.grid(row=3, column=0, columnspan=3, sticky="w", pady=(12, 0))
+
+        # Live view of what the listener actually receives.  If a combination
+        # does not work, this shows whether it reaches the app at all and what
+        # the app thinks it is — which is the difference between "not detected"
+        # and "detected but not matching".
+        ttk.Separator(tab, orient="horizontal").grid(
+            row=4, column=0, columnspan=3, sticky="ew", pady=(12, 8))
+        ttk.Label(tab, text="Key tester — press any combination:").grid(
+            row=5, column=0, columnspan=2, sticky="w")
+        self.hotkey_seen_lbl = ttk.Label(tab, text="(nothing yet)", style="Value.TLabel")
+        self.hotkey_seen_lbl.grid(row=5, column=2, sticky="e")
         ttk.Label(
             tab,
             text="Global hotkeys work on X11. On Wayland the system usually blocks them —\n"
                  "use the Start button instead.",
             foreground="#777", font=("Sans", 9),
-        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(10, 0))
+        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(10, 0))
 
     def _build_tab_why(self, nb) -> None:
         tk, ttk = self.tk, self.ttk
@@ -508,6 +516,15 @@ class ScreenWatchApp:
                     self._set_status(f"Hotkey action failed: {exc}", "#c0392b")
 
             if not quitting:
+                last_seen = None
+                while True:
+                    try:
+                        last_seen = self._observed.get_nowait()
+                    except queue.Empty:
+                        break
+                if last_seen is not None:
+                    self.hotkey_seen_lbl.configure(text=last_seen)
+
                 while True:
                     try:
                         ev = self._events.get_nowait()
@@ -694,6 +711,7 @@ class ScreenWatchApp:
         if not (is_valid(t) and is_valid(q)):
             self._set_hotkey_status("Invalid hotkey combination.", "#c0392b")
             return
+        self.hotkeys.on_observed = self._observed.put
         ok = self.hotkeys.start({
             t: lambda: self._actions.put("toggle"),
             q: lambda: self._actions.put("quit"),

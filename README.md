@@ -212,7 +212,15 @@ and raise the **Noise filter** so trivial changes are skipped.
 | Global hotkeys | ✅ `pynput` | ❌ usually blocked — use the on-screen button |
 
 The Hotkeys tab confirms receipt (“✔ start/stop hotkey received at …”) whenever a
-combination reaches the app, so you can tell a dead hotkey from a dead action.
+combination reaches the app, and its **key tester** shows the last combination the
+listener saw — so you can tell “not detected at all” from “detected but not
+matching”.
+
+Matching is done by tracking modifier state and normalising the trigger key,
+rather than by comparing characters. That matters because many X setups deliver
+a *control character* when Ctrl is held (`Ctrl+A` arrives as `\x01`, `Ctrl+Z` as
+`\x1a`), which never equals `a`/`z` — the reason character-based matching lets
+plain `A` work while `Ctrl+Shift+A` silently does nothing.
 
 **Recommendation:** for the smoothest experience, run in an **X11 session**
 (pick “Xorg”/“X11” at your login screen). ScreenWatch runs fine under XWayland.
@@ -257,7 +265,7 @@ tests/               headless unit + end-to-end tests
 
 ```bash
 pip install -r requirements.txt pytest
-python -m pytest -q          # 60 tests, all run headless (no display needed)
+python -m pytest -q          # 80 tests, all run headless (no display needed)
 ```
 
 The core (config, capture, detector, monitor) has **no import-time GUI or input
