@@ -1,8 +1,8 @@
 """Screen capture helpers.
 
 Capture is done with ``mss`` which is fast and dependency-light.  The only
-CPU-relevant work here is turning a captured frame into a small grayscale array
-that the detector can diff cheaply, so that logic lives in :func:`to_gray` and
+CPU-relevant work here is turning a captured frame into a small array that the
+detector can diff cheaply, so that logic lives in :func:`to_color_samples` and
 is unit-tested directly (no screen required).
 """
 
@@ -13,8 +13,8 @@ from typing import Tuple
 import numpy as np
 
 
-def to_gray(raw: bytes, width: int, height: int, downscale_max: int) -> np.ndarray:
-    """Convert a raw BGRA frame into a small grayscale ``int16`` array.
+def to_color_samples(raw: bytes, width: int, height: int, downscale_max: int) -> np.ndarray:
+    """Downsample a raw BGRA frame to a small ``int16`` array, keeping colour.
 
     Parameters
     ----------
@@ -32,8 +32,16 @@ def to_gray(raw: bytes, width: int, height: int, downscale_max: int) -> np.ndarr
     Returns
     -------
     np.ndarray
-        2-D ``int16`` grayscale image (rows × cols).  ``int16`` is chosen so a
-        later ``a - b`` cannot overflow like ``uint8`` would.
+        3-D ``int16`` array (rows × cols × 3, channels B/G/R).  Earlier
+        versions collapsed this to a single grayscale value (the channel
+        mean), which is cheaper but throws hue away: a button that swaps from
+        purple ``(153,153,204)`` to green ``(102,255,102)`` has almost the same
+        mean brightness (170 vs 153) even though the colour change is obvious,
+        so a big, real visual change could go undetected.  Keeping all three
+        channels lets the detector catch hue changes, not just brightness
+        changes, while the region stays down-sampled so the cost is still
+        trivial.  ``int16`` is chosen so a later ``a - b`` cannot overflow like
+        ``uint8`` would.
     """
     arr = np.frombuffer(raw, dtype=np.uint8)
     arr = arr.reshape(height, width, 4)
@@ -41,16 +49,11 @@ def to_gray(raw: bytes, width: int, height: int, downscale_max: int) -> np.ndarr
     step = max(1, int(max(width, height) / max(1, downscale_max)))
     # Stride-based down-sample + drop the alpha channel in one view.
     small = arr[::step, ::step, :3]
-
-    # Mean of B, G, R is plenty for change detection and avoids per-channel
-    # float weights.  Accumulate straight into int16 (max sum 765 fits) so the
-    # result is a compact, overflow-safe array without an extra astype copy.
-    gray = small.sum(axis=2, dtype=np.int16) // 3
-    return gray
+    return small.astype(np.int16)
 
 
 def capture_size(width: int, height: int, downscale_max: int) -> Tuple[int, int]:
-    """Return the (rows, cols) that :func:`to_gray` will produce.  For tests."""
+    """Return the (rows, cols) that :func:`to_color_samples` will produce.  For tests."""
     step = max(1, int(max(width, height) / max(1, downscale_max)))
     rows = len(range(0, height, step))
     cols = len(range(0, width, step))

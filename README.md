@@ -16,9 +16,9 @@ It is built to run **for hours** with a tiny CPU and memory footprint.
 - 🖼️ **Truly live point-and-drag selection** — the screen is **never covered**.
   You drag directly over your real, moving desktop (video keeps playing, UIs keep
   animating), with no compositor required. Press **Esc or right-click** to cancel.
-- ⚡ **Low resource use** — the watched region is down-scaled to a tiny grayscale
-  image and diffed with NumPy. On an 800×600 region this is **~0.14% of one CPU
-  core at 5 fps** and a few dozen KiB of working memory. Made for 4–5 hour runs.
+- ⚡ **Low resource use** — the watched region is down-scaled before diffing with
+  NumPy. On an 800×600 region this is **~0.32% of one CPU core at 5 fps** and
+  under 100 KiB of working memory. Made for 4–5 hour runs.
 - 🎚️ **Sensitivity & noise controls** — react to the tiniest flicker or only to
   big changes; a noise filter ignores compression/render jitter.
 - 🧠 **Two detection modes** — react to *any* change (vs. the previous frame) or
@@ -169,7 +169,7 @@ see the picture of what triggered it.
 |---|---|
 | **Sensitivity** (1–100) | Higher reacts to smaller visual changes. 50 is a good start. |
 | **Check rate (fps)** | How often the region is sampled. Lower = less CPU. 3–5 fps is plenty for most UIs. |
-| **Noise filter** (0–255) | Per-pixel brightness change below this is ignored — kills flicker/compression noise. |
+| **Noise filter** (0–255) | A pixel counts as changed once its strongest colour channel moves by more than this — kills flicker/compression noise while still catching hue changes (e.g. a button swapping colour) that a brightness-only check would miss. |
 | **Compare against** | *Previous frame*: fires on any change/motion. *Start frame*: fires when the area deviates from how it looked at Start. |
 | **Button / Type** | Which mouse button; single or double click. |
 | **Cooldown (s)** | Minimum time between clicks; also the settle time so the click’s own visual effect doesn’t re-trigger detection. |
@@ -190,13 +190,13 @@ Settings are saved to `~/.config/screenwatch/config.json` on exit (or via
 ScreenWatch is designed to sit in the background for hours:
 
 - Only the selected region is captured (via `mss`), then **down-sampled to a
-  ~120 px grayscale array** before any comparison — the diff cost is independent
+  ~120 px colour array** before any comparison — the diff cost is independent
   of your monitor size.
 - The loop is **time-paced**, never a busy-wait, and sleeps on the stop-event so
   stopping is instant.
-- Measured cost of capture-convert + detect on an 800×600 region: **~0.27 ms per
-  frame** → about **0.14% of one core at 5 fps**. Working memory for detection is
-  a couple of small buffers (tens of KiB).
+- Measured cost of capture-convert + detect on an 800×600 region: **~0.63 ms per
+  frame** → about **0.32% of one core at 5 fps**. Working memory for detection is
+  a couple of small buffers (under 100 KiB).
 
 To minimise CPU further: lower the **Check rate**, keep the watched region small,
 and raise the **Noise filter** so trivial changes are skipped.
@@ -265,7 +265,7 @@ tests/               headless unit + end-to-end tests
 
 ```bash
 pip install -r requirements.txt pytest
-python -m pytest -q          # 80 tests, all run headless (no display needed)
+python -m pytest -q          # 84 tests, all run headless (no display needed)
 ```
 
 The core (config, capture, detector, monitor) has **no import-time GUI or input

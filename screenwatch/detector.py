@@ -103,9 +103,18 @@ class ChangeDetector:
             return DetectionResult(changed=False, score=0.0)
 
         diff = np.abs(frame - self._reference)
-        mask = diff > self.pixel_threshold
+        if diff.ndim == 3:
+            # Colour frames (rows, cols, channels): use the single biggest
+            # channel delta per pixel rather than an average. Averaging masks
+            # hue changes with similar overall brightness (a purple button
+            # swapping to green, say) — the strongest channel still shows a
+            # large delta even when the mean barely moves.
+            pixel_diff = diff.max(axis=2)
+        else:
+            pixel_diff = diff
+        mask = pixel_diff > self.pixel_threshold
         changed_pixels = int(np.count_nonzero(mask))
-        score = changed_pixels / diff.size if diff.size else 0.0
+        score = changed_pixels / mask.size if mask.size else 0.0
         changed = bool(score >= self.area_threshold)
         # Only keep the mask when the GUI wants to explain detections; this
         # avoids retaining an extra array on every frame during normal runs.

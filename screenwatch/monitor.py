@@ -6,7 +6,7 @@ marshals those onto the Tk main loop).  It is written to be gentle on the CPU:
 
 * the region is captured at a bounded FPS (``time`` based pacing, never a busy
   loop);
-* frames are down-sampled to a tiny grayscale array before any comparison;
+* frames are down-sampled to a tiny colour array before any comparison;
 * ``mss`` is created *inside* the thread because it is not shareable across
   threads.
 """
@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from .capture import build_change_preview, to_gray
+from .capture import build_change_preview, to_color_samples
 from .clicker import Clicker
 from .config import Config
 from .detector import ChangeDetector
@@ -103,10 +103,10 @@ class Monitor:
                     )
 
                     shot = sct.grab(monitor_box)
-                    gray = to_gray(shot.raw, shot.width, shot.height, cfg.downscale_max)
+                    frame = to_color_samples(shot.raw, shot.width, shot.height, cfg.downscale_max)
                     # The mask belongs to the pre-advance reference, so capture
                     # it right after process() while shot still holds this frame.
-                    result = detector.process(gray)
+                    result = detector.process(frame)
                     change_mask = detector.last_mask
                     frame_index += 1
 

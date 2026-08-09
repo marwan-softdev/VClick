@@ -93,3 +93,47 @@ def test_sensitivity_mapping_is_monotonic():
     assert all(a > b for a, b in zip(areas, areas[1:]))
     assert areas[0] > 0.5   # insensitive end needs a big change
     assert areas[-1] < 0.01  # sensitive end reacts to tiny changes
+
+
+# -- colour frames: the hue-vs-luminance bug -------------------------------
+def _color_frame(bgr, shape=(50, 50)):
+    h, w = shape
+    return np.tile(np.array(bgr, dtype=np.int16), (h, w, 1))
+
+
+def test_hue_change_with_similar_luminance_is_detected():
+    # Purple (153,153,204) and green (102,255,102) as RGB have grayscale
+    # means of 170 and 153 -- only 17 apart, below the default noise filter
+    # of 25. A luminance-only detector would miss this real, obvious colour
+    # change; comparing full colour must not.
+    purple_bgr = (204, 153, 153)  # BGR order
+    green_bgr = (102, 255, 102)
+    det = ChangeDetector(sensitivity=50, pixel_threshold=25)
+    det.process(_color_frame(purple_bgr))
+    res = det.process(_color_frame(green_bgr))
+    assert res.changed is True
+    assert res.score == 1.0
+
+
+def test_color_diff_uses_strongest_channel_not_average():
+    # A single channel jumping by 200 must register even though the other
+    # two channels are unchanged (average would be ~67, under threshold).
+    det = ChangeDetector(sensitivity=90, pixel_threshold=50)
+    det.process(_color_frame((10, 10, 10)))
+    res = det.process(_color_frame((10, 10, 210)))
+    assert res.changed is True
+
+
+def test_small_uniform_color_noise_is_still_filtered():
+    # All channels drifting by a small amount should still be ignored.
+    det = ChangeDetector(sensitivity=100, pixel_threshold=25)
+    det.process(_color_frame((100, 100, 100)))
+    res = det.process(_color_frame((110, 108, 105)))
+    assert res.changed is False
+
+
+def test_color_mask_shape_is_two_dimensional():
+    det = ChangeDetector(sensitivity=90, pixel_threshold=10, keep_mask=True)
+    det.process(_color_frame((0, 0, 0), shape=(20, 30)))
+    det.process(_color_frame((255, 0, 0), shape=(20, 30)))
+    assert det.last_mask.shape == (20, 30)
