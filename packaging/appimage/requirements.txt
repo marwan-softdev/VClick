@@ -6,7 +6,18 @@ numpy>=1.21
 pynput>=1.7.6
 Pillow>=9.0.0
 
-# ScreenWatch itself, installed straight from its git repo. Update the ref
-# after "@" to a release tag once one exists (a floating branch is fine for
-# testing, but not reproducible for a real release).
-git+https://github.com/mozaher/Marwan_AutoProgram.git@claude/screen-change-auto-click-q8eylj#egg=screenwatch
+# ScreenWatch itself, installed from a source tarball of this branch.
+#
+# NOT a "git+...@branch#egg=..." VCS URL: python-appimage's own git_warnings
+# filter (meant to hide harmless "Running command git clone/checkout" and
+# "Switched to a new branch" progress messages pip writes to stderr) doesn't
+# match this git version's exact wording -- git here says
+# "branch 'x' set up to track 'origin/x'." (lowercase, no "remote") where the
+# filter regex expects "Branch '.*' set up to track remote" (capital B,
+# different phrasing) -- so that one harmless line gets misread as a fatal
+# error and aborts the build. Installing from a plain tarball URL sidesteps
+# it entirely: pip never invokes git, so none of those stderr lines exist to
+# be misclassified. (Confirmed via a real GitHub Actions run: see
+# packaging/README.md.) Update this to a release tag's archive URL once one
+# exists.
+https://github.com/mozaher/Marwan_AutoProgram/archive/refs/heads/claude/screen-change-auto-click-q8eylj.tar.gz
