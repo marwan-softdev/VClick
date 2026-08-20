@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=ScreenWatch
+GenericName=Auto-click on screen change
+Comment=Watch a screen area and click a location the moment it changes
+Exec=screenwatch
+Icon=io.github.mozaher.ScreenWatch
+Terminal=false
+Categories=Utility;
+Keywords=automation;autoclick;screen;monitor;
+StartupWMClass=Screenwatch

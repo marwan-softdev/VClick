@@ -1,0 +1,111 @@
+# Flatpak manifest for ScreenWatch.
+#
+# Verification status (honest disclosure — see docs/PACKAGING.md for detail):
+#   - The Tcl/Tk source archives below are real, downloaded and sha256-verified
+#     from sourceforge.net in the same environment that wrote this manifest.
+#   - The Python wheel sources below are real, resolved via PyPI's JSON API and
+#     cross-checked against independently-computed local sha256 sums.
+#   - What is NOT verified: whether org.freedesktop.Sdk's bundled python3 has
+#     the `_tkinter` extension module already compiled in (just missing its
+#     runtime Tcl/Tk libraries, which this manifest supplies), or whether it
+#     was never built at all (in which case Tcl/Tk needs pairing with a
+#     from-source CPython build instead). This could not be tested in the
+#     environment that wrote this manifest: flathub.org (needed to fetch the
+#     runtime/SDK) and python.org (needed for a from-source CPython fallback)
+#     were both unreachable from that sandbox. The first real build (CI, or
+#     `flatpak-builder` on a machine with normal internet access) resolves
+#     this immediately and unambiguously.
+
+app-id: io.github.mozaher.ScreenWatch
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: screenwatch
+
+finish-args:
+  # X11 socket. "fallback-x11" (rather than the blunter "x11") only opens
+  # this when Wayland's own forwarding isn't available, which in practice
+  # still covers most Wayland sessions via XWayland. Screen capture and
+  # synthetic clicks/hotkeys are ScreenWatch's entire purpose and have no
+  # portal equivalent for arbitrary-coordinate global input yet, so this
+  # broader-than-usual permission is inherent to the app, not excess scope.
+  - --socket=fallback-x11
+  # MIT-SHM shared memory, used by mss for fast X11 screen capture.
+  - --share=ipc
+  # Lets Tk's rendering use hardware acceleration where available.
+  - --device=dri
+
+modules:
+  - name: tcl
+    buildsystem: simple
+    subdir: unix
+    build-commands:
+      - ./configure --prefix=/app --enable-shared
+      - make -j${FLATPAK_BUILDER_N_JOBS:-1}
+      - make install
+    sources:
+      - type: archive
+        url: https://sourceforge.net/projects/tcl/files/Tcl/8.6.14/tcl8.6.14-src.tar.gz/download
+        sha256: 5880225babf7954c58d4fb0f5cf6279104ce1cd6aa9b71e9a6322540e1c4de66
+        dest-filename: tcl8.6.14-src.tar.gz
+
+  - name: tk
+    buildsystem: simple
+    subdir: unix
+    build-commands:
+      - ./configure --prefix=/app --enable-shared --with-tcl=/app/lib --x-includes=/usr/include --x-libraries=/usr/lib
+      - make -j${FLATPAK_BUILDER_N_JOBS:-1}
+      - make install
+    sources:
+      - type: archive
+        url: https://sourceforge.net/projects/tcl/files/Tcl/8.6.14/tk8.6.14-src.tar.gz/download
+        sha256: 8ffdb720f47a6ca6107eac2dd877e30b0ef7fac14f3a84ebbd0b3612cee41a94
+        dest-filename: tk8.6.14-src.tar.gz
+
+  - name: screenwatch
+    buildsystem: simple
+    build-commands:
+      # --target expects the wheel/sdist filenames from the pinned sources
+      # below, installed straight into /app's site-packages (no network,
+      # matching Flathub's no-network-during-build requirement).
+      - pip3 install --no-index --find-links="file://$PWD" --prefix=/app
+          six-1.17.0-py2.py3-none-any.whl
+          python_xlib-0.33-py2.py3-none-any.whl
+          pynput-1.8.2-py2.py3-none-any.whl
+          mss-10.2.0-py3-none-any.whl
+          numpy-2.2.6-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+          pillow-12.2.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+      - pip3 install --no-index --no-build-isolation --prefix=/app screenwatch-src/
+      - install -Dm644 screenwatch-src/packaging/io.github.mozaher.ScreenWatch.desktop
+          /app/share/applications/io.github.mozaher.ScreenWatch.desktop
+      - install -Dm644 screenwatch-src/packaging/io.github.mozaher.ScreenWatch.metainfo.xml
+          /app/share/metainfo/io.github.mozaher.ScreenWatch.metainfo.xml
+      - install -Dm644 screenwatch-src/screenwatch/assets/icon.png
+          /app/share/icons/hicolor/256x256/apps/io.github.mozaher.ScreenWatch.png
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
+        sha256: 4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274
+      - type: file
+        url: https://files.pythonhosted.org/packages/fc/b8/ff33610932e0ee81ae7f1269c890f697d56ff74b9f5b2ee5d9b7fa2c5355/python_xlib-0.33-py2.py3-none-any.whl
+        sha256: c3534038d42e0df2f1392a1b30a15a4ff5fdc2b86cfa94f072bf11b10a164398
+      - type: file
+        url: https://files.pythonhosted.org/packages/6d/98/bbeb760852adb27f166ce1617f0e51aabb15f21b1e60ea703f2aed3c78ac/pynput-1.8.2-py2.py3-none-any.whl
+        sha256: 8cc38cf13a6ab2749cb375678be8a0fd705d7ce49c8001ff5db4007a723bbef1
+      - type: file
+        url: https://files.pythonhosted.org/packages/f2/c3/313e14f245c79b4c05bd0f3a84a4813aa26fa10f8993aebd91d04c5fad3f/mss-10.2.0-py3-none-any.whl
+        sha256: e79f428899280e7e64e38365b5bfed683851ebea807eeaeadaf06eb8e0d67197
+      - type: file
+        url: https://files.pythonhosted.org/packages/b3/dd/2238b898e51bd6d389b7389ffb20d7f4c10066d80351187ec8e303a5a475/numpy-2.2.6-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+        sha256: ba10f8411898fc418a521833e014a77d3ca01c15b0c6cdcce6a0d2897e6dbbdf
+      - type: file
+        url: https://files.pythonhosted.org/packages/d3/f1/00b7278c7dd52b17ad4329153748f87b6756ec195ff786c2bdf12518337d/pillow-12.2.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+        sha256: 8bd7903a5f2a4545f6fd5935c90058b89d30045568985a71c79f5fd6edf9b91e
+      # NOTE for the real Flathub submission: Flathub's build servers only
+      # fetch from a public, network-reachable source, and prefer a pinned
+      # tag/commit over a floating branch for reproducibility. Point "branch"
+      # at a release tag once one exists; a specific commit works too.
+      - type: git
+        url: https://github.com/mozaher/Marwan_AutoProgram.git
+        branch: claude/screen-change-auto-click-q8eylj
+        dest: screenwatch-src

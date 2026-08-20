@@ -1,0 +1,60 @@
+name: Packaging
+
+# Builds the Flatpak and AppImage for real on GitHub's runners, which have
+# normal internet access (unlike the sandboxed environment these manifests
+# were originally written in — see packaging/README.md for what that could
+# and couldn't verify locally). This is the first real, end-to-end build
+# test for both formats.
+
+on:
+  push:
+    branches: [claude/screen-change-auto-click-q8eylj]
+    paths:
+      - "packaging/**"
+      - "screenwatch/**"
+      - "pyproject.toml"
+      - ".github/workflows/packaging.yml"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint-metadata:
+    name: Validate desktop / AppStream files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y appstream desktop-file-utils
+      - run: appstreamcli validate --pedantic packaging/io.github.mozaher.ScreenWatch.metainfo.xml
+      - run: desktop-file-validate packaging/io.github.mozaher.ScreenWatch.desktop
+      - run: desktop-file-validate packaging/appimage/ScreenWatch.desktop
+
+  flatpak:
+    name: Build Flatpak
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:freedesktop-23.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: screenwatch.flatpak
+          manifest-path: packaging/flatpak/io.github.mozaher.ScreenWatch.yml
+          cache-key: flatpak-builder-${{ github.sha }}
+      # The uploaded bundle is directly installable right now, before any
+      # Flathub review: `flatpak install screenwatch.flatpak`.
+
+  appimage:
+    name: Build AppImage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: bash packaging/appimage/build-appimage.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScreenWatch-AppImage
+          path: packaging/appimage/*.AppImage
+          if-no-files-found: error

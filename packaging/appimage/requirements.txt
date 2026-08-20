@@ -1,0 +1,12 @@
+# Requirements for the AppImage build (read by python-appimage's `build app`
+# command; see build-appimage.sh). Kept in sync by hand with ../../requirements.txt
+# since python-appimage's own installer, not pip in this repo, consumes this file.
+mss>=9.0.0
+numpy>=1.21
+pynput>=1.7.6
+Pillow>=9.0.0
+
+# ScreenWatch itself, installed straight from its git repo. Update the ref
+# after "@" to a release tag once one exists (a floating branch is fine for
+# testing, but not reproducible for a real release).
+git+https://github.com/mozaher/Marwan_AutoProgram.git@claude/screen-change-auto-click-q8eylj#egg=screenwatch
