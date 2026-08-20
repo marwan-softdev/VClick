@@ -1,12 +1,14 @@
 """Mouse-click backend.
 
-``pynput`` is the primary backend (pure-Python, lightweight).  Because it needs
-a display *at import time*, it is imported lazily so the rest of the package
-stays testable on headless machines.
+``pynput`` is the primary backend on every platform: on Windows it drives the
+native ``SendInput``/``SetCursorPos`` APIs directly (no extra tools needed);
+on Linux X11 it uses Xlib.  Because resolving it needs a display *at import
+time*, it is imported lazily so the rest of the package stays testable on
+headless machines.
 
-For Wayland sessions — where pynput's X backend cannot synthesise input — the
-clicker transparently falls back to the ``ydotool`` command-line tool if it is
-installed, and to ``xdotool`` for XWayland/X11 setups.
+For Linux Wayland sessions — where pynput's X backend cannot synthesise
+input — the clicker transparently falls back to the ``ydotool`` command-line
+tool if it is installed, and to ``xdotool`` for XWayland/X11 setups.
 """
 
 from __future__ import annotations
@@ -37,7 +39,7 @@ class Clicker:
     def _ensure_backend(self) -> None:
         if self._backend is not None:
             return
-        # 1) pynput — best cross-desktop experience on X11.
+        # 1) pynput — native on Windows and Linux X11.
         try:
             from pynput.mouse import Button, Controller  # type: ignore
 
@@ -63,8 +65,9 @@ class Clicker:
             return
 
         raise ClickError(
-            "No click backend available. Install python3 'pynput' (X11) or the "
-            "'ydotool' (Wayland) / 'xdotool' (X11) command-line tools."
+            "No click backend available. Install the 'pynput' Python package "
+            "(works on Windows and Linux X11), or on Linux Wayland the "
+            "'ydotool' / 'xdotool' command-line tools."
         )
 
     @property

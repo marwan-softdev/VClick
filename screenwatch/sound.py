@@ -4,12 +4,17 @@
 app is launched from a desktop icon (no terminal attached), and most terminal
 emulators ship with the bell disabled anyway.  So we try real audio players in
 order and remember the first one that works.
+
+On Windows, the stdlib ``winsound`` module plays a system notification sound
+directly (no external player needed) and is tried first.  On Linux we shell
+out to whichever of a handful of common CLI players is installed.
 """
 
 from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 from typing import List, Optional, Tuple
 
 # Ordered candidates: (executable, args-builder).  The first that exists and
@@ -61,6 +66,7 @@ class Beeper:
 
     def __init__(self, tk_widget=None) -> None:
         self._cmd: Optional[List[str]] = None
+        self._winsound = None
         self._resolved = False
         self.backend = "unresolved"
         self._tk_widget = tk_widget
@@ -69,6 +75,17 @@ class Beeper:
         if self._resolved:
             return
         self._resolved = True
+
+        if sys.platform == "win32":
+            try:
+                import winsound  # stdlib, Windows only
+
+                self._winsound = winsound
+                self.backend = "winsound"
+                return
+            except ImportError:  # pragma: no cover - always present on Windows
+                pass
+
         for name, cmd in _candidates():
             try:
                 subprocess.run(cmd, timeout=5, check=True,
@@ -77,12 +94,20 @@ class Beeper:
                 continue
             self._cmd, self.backend = cmd, name
             return
-        # Last resort: the X11 bell via Tk. Often disabled, but free to try.
+        # Last resort: the system bell via Tk. Often disabled, but free to try.
         self.backend = "tk-bell" if self._tk_widget is not None else "none"
 
     def play(self) -> None:
         """Fire and forget; never raises and never blocks the caller."""
         self._resolve()
+        if self._winsound is not None:
+            try:
+                # Asynchronous + non-blocking: returns immediately, never
+                # stalls the monitor loop waiting on Windows' audio mixer.
+                self._winsound.MessageBeep(self._winsound.MB_ICONASTERISK)
+            except Exception:  # noqa: BLE001
+                pass
+            return
         if self._cmd is not None:
             try:
                 subprocess.Popen(self._cmd, stdout=subprocess.DEVNULL,

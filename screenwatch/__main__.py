@@ -39,17 +39,21 @@ def main(argv=None) -> int:
 
 def _check() -> int:
     import os
+    import platform
 
     print(f"{__app_name__} {__version__}")
-    print(f"session type : {os.environ.get('XDG_SESSION_TYPE', 'unknown')}")
-    print(f"DISPLAY      : {os.environ.get('DISPLAY') or '(unset)'}")
-    print(f"WAYLAND      : {os.environ.get('WAYLAND_DISPLAY') or '(unset)'}")
+    print(f"platform     : {platform.system()} {platform.release()}")
+    if sys.platform.startswith("linux"):
+        print(f"session type : {os.environ.get('XDG_SESSION_TYPE', 'unknown')}")
+        print(f"DISPLAY      : {os.environ.get('DISPLAY') or '(unset)'}")
+        print(f"WAYLAND      : {os.environ.get('WAYLAND_DISPLAY') or '(unset)'}")
 
     try:
         import tkinter  # noqa: F401
         print("tkinter      : available")
     except Exception as exc:  # noqa: BLE001
-        print(f"tkinter      : MISSING ({exc}) — install 'python3-tk'")
+        hint = " — install 'python3-tk'" if sys.platform.startswith("linux") else ""
+        print(f"tkinter      : MISSING ({exc}){hint}")
 
     try:
         import mss  # noqa: F401
@@ -58,8 +62,15 @@ def _check() -> int:
         print(f"mss (capture): MISSING ({exc})")
 
     from .clicker import Clicker
+    from .sound import Beeper
 
     print(f"click backend: {Clicker().backend_name}")
+    beeper = Beeper()
+    beeper._resolve()  # noqa: SLF001 - diagnostics only, resolves without playing
+    print(f"sound backend: {beeper.backend}")
+    from .config import default_config_path
+
+    print(f"config path  : {default_config_path()}")
     return 0
 
 

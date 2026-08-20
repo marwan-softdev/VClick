@@ -7,7 +7,8 @@ changes *visually* — a button lights up, a number updates, an image loads, a
 progress bar finishes — it clicks a location you pick. Both the watched region
 and the click point are chosen visually through a clean, friendly GUI.
 
-It is built to run **for hours** with a tiny CPU and memory footprint.
+It is built to run **for hours** with a tiny CPU and memory footprint, and
+runs natively on **both Linux and Windows**.
 
 ---
 
@@ -29,50 +30,86 @@ It is built to run **for hours** with a tiny CPU and memory footprint.
   see a picture of exactly what triggered it: the watched region with the
   responsible pixels highlighted in red. View it larger, or save it as a PNG.
 - ⌨️ **Customizable global hotkeys** — record any combination for start/stop and
-  quit (defaults `Ctrl+Shift+S` / `Ctrl+Shift+Q`) right in the Hotkeys tab (X11).
+  quit (defaults `Ctrl+Shift+S` / `Ctrl+Shift+Q`) right in the Hotkeys tab
+  (Windows & Linux X11).
 - 💾 **Remembers everything** — settings and selections persist between runs.
-- 🐧 **X11 & Wayland aware** — best on X11; on Wayland it falls back to
-  `ydotool`/`xdotool` for clicking and tells you what it needs.
+- 🖥️ **Linux + Windows, with a real launcher icon** — the installer for each
+  platform registers ScreenWatch in your application menu / Start Menu with
+  its own icon, so day-to-day you launch it by clicking, never a terminal.
+- 🐧 **X11 & Wayland aware on Linux** — best on X11; on Wayland it falls back
+  to `ydotool`/`xdotool` for clicking and tells you what it needs.
 
 ---
 
 ## Requirements
 
-- Linux with a graphical desktop (X11 recommended; Wayland supported with a
-  helper — see [Wayland notes](#wayland-vs-x11)).
+**Linux** (X11 recommended; Wayland supported with a helper — see
+[platform notes](#platform-notes)):
 - Python 3.8+
 - System Tkinter (`python3-tk` on Debian/Ubuntu) — ships with Python but is a
   separate package on many distros.
-- Python packages: `mss`, `numpy`, `pynput`, `Pillow` (installed automatically).
+
+**Windows** 10 or 11:
+- Python 3.8+ from [python.org](https://www.python.org/downloads/windows/),
+  with **"Add python.exe to PATH"** ticked during setup. That installer
+  already bundles Tkinter — nothing extra to install.
+
+Both platforms: `mss`, `numpy`, `pynput`, `Pillow` (installed automatically
+by the steps below).
 
 ---
 
 ## Install
 
-### Quick (recommended)
+### Linux
 
 ```bash
 git clone <this-repo> screenwatch && cd screenwatch
-./install.sh      # installs python3-tk + a local .venv with the deps
-./run.sh          # launch the app
+./install.sh      # installs python3-tk + ScreenWatch, adds an app-menu icon
 ```
 
-### Manual
+That's it — from then on, open **ScreenWatch** from your application menu /
+app list like any other program (search for it by name). No terminal needed
+after this one-time install.
+
+<details>
+<summary>Manual install (no launcher icon, no python3-tk auto-install)</summary>
 
 ```bash
-# Debian/Ubuntu:  sudo apt install python3-tk
-# Fedora:         sudo dnf install python3-tkinter
-# Arch:           sudo pacman -S tk
-
+sudo apt install python3-tk    # Debian/Ubuntu (Fedora: python3-tkinter, Arch: tk)
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python -m screenwatch
 ```
+</details>
 
-Check your environment at any time:
+### Windows
+
+```bat
+git clone <this-repo> screenwatch
+cd screenwatch
+install.bat
+```
+
+That's it — `install.bat` creates a Start Menu shortcut (and a Desktop icon)
+with ScreenWatch's own icon. Search **"ScreenWatch"** in the Start Menu, or
+double-click the desktop icon — it opens with **no console window**.
+
+<details>
+<summary>Manual install (no shortcuts)</summary>
+
+```bat
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python -m screenwatch
+```
+</details>
+
+### Check your environment at any time
 
 ```bash
-./run.sh --check      # reports session type, tkinter, capture & click backend
+./run.sh --check      # Linux — reports platform, tkinter, capture/click/sound backends
+run.bat --check        REM Windows
 ```
 
 ---
@@ -180,8 +217,9 @@ see the picture of what triggered it.
 | **Log history** | How many past detections (and their images) stay browsable. Bounded so multi-hour runs can't grow memory — typical screen content is under 1 KiB per image. |
 | **Hotkeys** | Enable/disable global hotkeys and record custom combinations for start/stop and quit. |
 
-Settings are saved to `~/.config/screenwatch/config.json` on exit (or via
-**File → Save settings**).
+Settings are saved on exit (or via **File → Save settings**) to
+`~/.config/screenwatch/config.json` on Linux, or `%APPDATA%\ScreenWatch\config.json`
+on Windows.
 
 ---
 
@@ -203,13 +241,15 @@ and raise the **Noise filter** so trivial changes are skipped.
 
 ---
 
-## Wayland vs X11
+## Platform notes
 
-| | X11 | Wayland |
-|---|---|---|
-| Screen capture | ✅ `mss` | ⚠️ region capture is restricted by the compositor |
-| Clicking | ✅ `pynput` | ✅ via `ydotool` (needs `ydotoold` running) |
-| Global hotkeys | ✅ `pynput` | ❌ usually blocked — use the on-screen button |
+| | Windows | Linux X11 | Linux Wayland |
+|---|---|---|---|
+| Screen capture | ✅ `mss` | ✅ `mss` | ⚠️ region capture is restricted by the compositor |
+| Clicking | ✅ `pynput` (native `SendInput`) | ✅ `pynput` | ✅ via `ydotool` (needs `ydotoold` running) |
+| Global hotkeys | ✅ `pynput` | ✅ `pynput` | ❌ usually blocked — use the on-screen button |
+| Sound feedback | ✅ `winsound` (built in) | ✅ via a CLI player if installed | ✅ via a CLI player if installed |
+| Launcher icon | ✅ Start Menu + Desktop (`install.bat`) | ✅ app menu (`install.sh`) | ✅ app menu (`install.sh`) |
 
 The Hotkeys tab confirms receipt (“✔ start/stop hotkey received at …”) whenever a
 combination reaches the app, and its **key tester** shows the last combination the
@@ -217,26 +257,40 @@ listener saw — so you can tell “not detected at all” from “detected but 
 matching”.
 
 Matching is done by tracking modifier state and normalising the trigger key,
-rather than by comparing characters. That matters because many X setups deliver
-a *control character* when Ctrl is held (`Ctrl+A` arrives as `\x01`, `Ctrl+Z` as
-`\x1a`), which never equals `a`/`z` — the reason character-based matching lets
-plain `A` work while `Ctrl+Shift+A` silently does nothing.
+rather than by comparing characters. That matters because Ctrl-held combinations
+often deliver a *control character* instead of the letter (`Ctrl+A` arrives as
+`\x01`, `Ctrl+Z` as `\x1a`, on both Windows and X11) — the reason naive
+character-based matching lets plain `A` work while `Ctrl+Shift+A` silently does
+nothing.
 
-**Recommendation:** for the smoothest experience, run in an **X11 session**
-(pick “Xorg”/“X11” at your login screen). ScreenWatch runs fine under XWayland.
-On native Wayland, install `ydotool` for clicking; `./run.sh --check` will show
+**On Linux**, for the smoothest experience run an **X11 session** (pick
+“Xorg”/“X11” at your login screen). ScreenWatch runs fine under XWayland. On
+native Wayland, install `ydotool` for clicking; `./run.sh --check` will show
 which click backend is active.
+
+**On Windows**, a global hotkey can't reach a window running as Administrator
+unless ScreenWatch is *also* running as Administrator (a Windows security
+rule, not a bug) — if a hotkey mysteriously stops working, check whether the
+target application is elevated.
 
 ---
 
 ## Troubleshooting
 
-- **“No click backend available.”** Install `pynput` (X11) or `ydotool`
-  (Wayland) / `xdotool` (X11). Run `./run.sh --check` to confirm.
-- **Tkinter error / blank window.** Install `python3-tk` (or your distro’s
-  equivalent).
-- **Global hotkeys don’t work.** You’re probably on Wayland — use the Start/Stop
-  button; the hint under the button will say so.
+- **“No click backend available.”** On Windows, reinstall — `pynput` should
+  have come with `install.bat`/`pip install -r requirements.txt`. On Linux,
+  install `pynput` (X11) or `ydotool`/`xdotool` (Wayland). Run `./run.sh
+  --check` (or `run.bat --check`) to confirm.
+- **Tkinter error / blank window.** Linux: install `python3-tk` (or your
+  distro's equivalent). Windows: reinstall Python from python.org, which
+  bundles Tkinter — a Microsoft Store Python install sometimes doesn't.
+- **Global hotkeys don't work.** On Linux you're probably on Wayland — use the
+  Start/Stop button; the hint under the button will say so. On Windows, check
+  whether the app you're clicking into is running as Administrator (see
+  [Platform notes](#platform-notes)).
+- **No launcher icon appeared.** Re-run `./install.sh` / `install.bat` — it's
+  safe to run again. On Linux, log out and back in if your desktop caches its
+  application menu.
 - **It clicks too often / not enough.** Adjust **Sensitivity** and the **Noise
   filter**, and raise the **Cooldown**.
 
@@ -249,13 +303,19 @@ screenwatch/
   __init__.py        package metadata
   __main__.py        CLI entry point (python -m screenwatch, --check, --version)
   config.py          settings dataclass + JSON persistence (no GUI deps)
-  capture.py         mss capture + fast grayscale down-sampling
+  capture.py         mss capture + fast colour down-sampling
   detector.py        NumPy change detection
   clicker.py         pynput / ydotool / xdotool click backends
   monitor.py         the capture→detect→click worker thread
-  hotkeys.py         optional global hotkeys
+  hotkeys.py         global hotkeys, layout/modifier-robust key matching
+  sound.py           click feedback: winsound (Windows) / CLI players (Linux)
+  paths.py           locates the bundled icon regardless of how it was installed
+  history.py         bounded per-detection history behind the Why/Log tab
   region_selector.py fullscreen overlays for picking region & point
   gui.py             the Tkinter/ttk window
+  assets/            app icon (icon.png, icon.ico), packaged with the app
+assets/
+  screenwatch.desktop  Linux launcher template, filled in by install.sh
 tests/               headless unit + end-to-end tests
 ```
 
@@ -265,12 +325,47 @@ tests/               headless unit + end-to-end tests
 
 ```bash
 pip install -r requirements.txt pytest
-python -m pytest -q          # 84 tests, all run headless (no display needed)
+python -m pytest -q          # 94 tests, all run headless (no display needed)
 ```
 
 The core (config, capture, detector, monitor) has **no import-time GUI or input
 dependencies**, so it imports and tests cleanly on headless CI. The monitor loop
-is covered end-to-end with a faked screen and mouse.
+is covered end-to-end with a faked screen and mouse. Windows-only code paths
+(the `%APPDATA%` config location, the `winsound` audio backend) are covered by
+tests that simulate `sys.platform == "win32"`, since CI here runs on Linux —
+see [Verifying the Windows support](#verifying-the-windows-support) below.
+
+---
+
+## Verifying the Windows support
+
+This project was developed and tested on Linux; there is no Windows machine in
+that loop. What's actually been verified, and how:
+
+- **Runtime logic that differs by platform** — the `%APPDATA%` config path and
+  the `winsound` sound backend — is unit-tested by simulating
+  `sys.platform == "win32"` (see `tests/test_cross_platform.py`). This checks
+  the *logic* is correct; it can't execute real `winsound` calls or produce
+  real Windows path separators (those are properties of the actual OS, not of
+  `sys.platform`, so the tests build their expectations the same portable way
+  rather than hard-coding one platform's separator).
+- **pynput's Windows backend** (mouse `SendInput`, keyboard hooks) is a
+  well-established, widely used library; the *matching logic* built on top of
+  it (`hotkeys.py`) is exercised with unit tests using synthetic key events,
+  including the exact Ctrl-produces-a-control-character case that Windows and
+  X11 share.
+- **`install.bat`/`run.bat`** follow standard, documented patterns (`pip`
+  editable installs, `gui-scripts` entry points, a `WScript.Shell` COM call
+  for shortcuts) but have not been executed on a real Windows machine.
+- **Everything else — capture, detection, the GUI, the click-log/preview
+  system, the Linux installer end-to-end** — has been run and verified for
+  real, including launching the actual installed entry point under a virtual
+  X server exactly as a desktop-icon click would, and a live before/after
+  comparison proving a real screen change on-screen triggers a real click.
+
+If something on Windows doesn't work as documented, that's the most likely
+place to look first — please open an issue with the output of `run.bat
+--check`.
 
 ---
 

@@ -10,12 +10,14 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
 authors = [{ name = "ScreenWatch" }]
-keywords = ["automation", "screen", "auto-click", "linux", "gui", "monitor"]
+keywords = ["automation", "screen", "auto-click", "linux", "windows", "gui", "monitor"]
 classifiers = [
+    "Environment :: Win32 (MS Windows)",
     "Environment :: X11 Applications",
     "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3",
     "Topic :: Utilities",
 ]
@@ -37,6 +39,9 @@ screenwatch-cli = "screenwatch.__main__:main"
 
 [tool.setuptools]
 packages = ["screenwatch"]
+
+[tool.setuptools.package-data]
+screenwatch = ["assets/*.png", "assets/*.ico"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

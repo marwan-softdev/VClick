@@ -4,7 +4,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-if [ -x ".venv/bin/python" ]; then
+if [ -x ".venv/bin/screenwatch" ]; then
+    exec .venv/bin/screenwatch "$@"
+elif [ -x ".venv/bin/python" ]; then
     exec .venv/bin/python -m screenwatch "$@"
 fi
 

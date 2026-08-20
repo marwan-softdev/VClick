@@ -291,8 +291,8 @@ class ScreenWatchApp:
         self.hotkey_seen_lbl.grid(row=5, column=2, sticky="e")
         ttk.Label(
             tab,
-            text="Global hotkeys work on X11. On Wayland the system usually blocks them —\n"
-                 "use the Start button instead.",
+            text="Global hotkeys work on Windows and Linux X11. On Linux Wayland the\n"
+                 "system usually blocks them — use the Start button instead.",
             foreground="#777", font=("Sans", 9),
         ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(10, 0))
 
@@ -332,8 +332,9 @@ class ScreenWatchApp:
         self.log_tree.pack(side="left", fill="both", expand=True)
         self.log_tree.bind("<<TreeviewSelect>>", self._on_log_select)
         self.log_tree.bind("<Double-1>", lambda e: self.open_preview_window())
-        # X11 reports the wheel as buttons 4/5; bind them explicitly so the log
-        # scrolls under the cursor without needing focus.
+        # X11 reports the wheel as buttons 4/5 (harmless no-ops on Windows,
+        # which instead sends <MouseWheel>, bound below); bind both so the
+        # log scrolls under the cursor on every platform without needing focus.
         self.log_tree.bind("<Button-4>", lambda e: self.log_tree.yview_scroll(-3, "units"))
         self.log_tree.bind("<Button-5>", lambda e: self.log_tree.yview_scroll(3, "units"))
         self.log_tree.bind("<MouseWheel>",
@@ -828,6 +829,26 @@ def run(config: Optional[Config] = None) -> None:
     """Launch the GUI event loop."""
     import tkinter as tk
 
-    root = tk.Tk()
+    # className sets WM_CLASS on X11, which desktop launchers use (via the
+    # .desktop file's StartupWMClass) to match this window back to its icon
+    # in the taskbar/alt-tab switcher. Ignored harmlessly on Windows. Tk
+    # normalises whatever string is passed to "First letter capitalised,
+    # rest lowercase" (verified: "ScreenWatch" in -> "Screenwatch" out), so
+    # the .desktop file's StartupWMClass is set to match that real value.
+    root = tk.Tk(className="ScreenWatch")
+    try:
+        import sys
+
+        from .paths import icon_ico_path, icon_path
+
+        if sys.platform == "win32":
+            ico = icon_ico_path()
+            if ico:
+                root.iconbitmap(default=ico)
+        png = icon_path()
+        if png:
+            root.iconphoto(True, tk.PhotoImage(file=png))
+    except Exception:  # noqa: BLE001 - a missing/bad icon must never block startup
+        pass
     ScreenWatchApp(root, config)
     root.mainloop()

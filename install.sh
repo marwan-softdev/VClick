@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# One-shot setup for ScreenWatch on Debian/Ubuntu-like systems.
-# Creates a local virtualenv and installs the Python dependencies.
-# Tkinter comes from the system package 'python3-tk'.
+# One-shot setup for ScreenWatch on Linux (Debian/Ubuntu/Fedora/Arch).
+# Creates a local virtualenv, installs ScreenWatch into it, and registers a
+# launcher icon in the desktop's application menu — so afterwards you can
+# start ScreenWatch by clicking its icon, with no terminal required.
 set -euo pipefail
 cd "$(dirname "$0")"
+REPO_DIR="$(pwd)"
 
 echo "== ScreenWatch installer =="
 
@@ -21,15 +23,33 @@ if ! python3 -c "import tkinter" >/dev/null 2>&1; then
     fi
 fi
 
-# 2) Create a virtualenv and install the Python deps.
+# 2) Create a virtualenv and install ScreenWatch (editable, so the app keeps
+#    reading its source/assets straight from this checkout).
 if [ ! -d ".venv" ]; then
     python3 -m venv .venv
 fi
 # shellcheck disable=SC1091
 . .venv/bin/activate
 pip install --upgrade pip >/dev/null
-pip install -r requirements.txt
+pip install -e .
+deactivate
+
+# 3) Register a launcher icon in the application menu (GNOME/KDE/XFCE/etc.
+#    all read *.desktop files from ~/.local/share/applications).
+APPS_DIR="$HOME/.local/share/applications"
+mkdir -p "$APPS_DIR"
+sed \
+    -e "s|__EXEC__|$REPO_DIR/.venv/bin/screenwatch|" \
+    -e "s|__ICON__|$REPO_DIR/screenwatch/assets/icon.png|" \
+    "$REPO_DIR/assets/screenwatch.desktop" > "$APPS_DIR/screenwatch.desktop"
+chmod +x "$APPS_DIR/screenwatch.desktop"
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true
+fi
 
 echo
-echo "Done. Start ScreenWatch with:  ./run.sh"
-echo "Diagnostics:                   ./run.sh --check"
+echo "Done! ScreenWatch is installed."
+echo "  - Open it from your application menu / app list (search \"ScreenWatch\")."
+echo "  - Or from a terminal:  ./run.sh"
+echo "  - Diagnostics:         ./run.sh --check"

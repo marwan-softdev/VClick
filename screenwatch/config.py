@@ -10,13 +10,19 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Dict, Optional
 
 # ---------------------------------------------------------------------------
-# Where the config file lives (follows the XDG Base Directory spec).
+# Where the config file lives: %APPDATA%\ScreenWatch on Windows (the
+# conventional per-user settings location there), the XDG Base Directory
+# spec (~/.config or $XDG_CONFIG_HOME) everywhere else.
 # ---------------------------------------------------------------------------
 def default_config_path() -> str:
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA") or os.path.expanduser("~")
+        return os.path.join(base, "ScreenWatch", "config.json")
     base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
     return os.path.join(base, "screenwatch", "config.json")
 
