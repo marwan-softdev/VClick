@@ -77,7 +77,7 @@ after this one-time install.
 Prefer a single portable file, or don't have root access? Download the
 self-contained `ScreenWatch-*.AppImage` (bundled Python, Tkinter, and
 dependencies included) from the
-**[`appimage-latest` release](../../releases/tag/appimage-latest)**. Mark it
+**[`appimage-latest-screen-change-q8eylj` release](../../releases/tag/appimage-latest-screen-change-q8eylj)**. Mark it
 executable once (a checkbox in your file manager, no typing) and double-click
 it from then on — no install step, no root, nothing to build. See
 [`packaging/appimage/`](packaging/appimage/) for how it's built.

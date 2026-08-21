@@ -12,7 +12,7 @@ package steps (Tkinter, `python3-venv`).
 Every push to this branch that touches `screenwatch/`, `pyproject.toml`, or
 `packaging/appimage/` triggers the `Build AppImage` GitHub Actions workflow,
 which (after a real build and a smoke test) publishes the result to the
-[**`appimage-latest` release**](../../releases/tag/appimage-latest) — a
+[**`appimage-latest-screen-change-q8eylj` release**](../../releases/tag/appimage-latest-screen-change-q8eylj) — a
 stable, direct-download link to just that one file, deliberately kept
 separate from the branch's *source* zip (which is for the `install.sh`
 terminal-install path and still contains this build tooling). That release

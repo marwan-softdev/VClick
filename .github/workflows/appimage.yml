@@ -51,16 +51,21 @@ jobs:
       - name: Publish as a release asset
         # End users should get one finished file, not a source zip they have
         # to build themselves -- so the AppImage also gets attached to a
-        # rolling "appimage-latest" release, giving it a stable, direct
-        # download URL that's entirely separate from the branch's source
-        # zip (which still has install.sh + this build tooling in it, for
-        # the terminal-install path). Re-running this updates that same
-        # release's asset in place rather than creating a new one each time.
+        # rolling release, giving it a stable, direct download URL that's
+        # entirely separate from the branch's source zip (which still has
+        # install.sh + this build tooling in it, for the terminal-install
+        # path). Re-running this updates that same release's asset in place
+        # rather than creating a new one each time.
+        #
+        # Tag is branch-scoped (not a generic "appimage-latest") because a
+        # generic tag collided with an unrelated pre-existing release from
+        # a different branch on the first attempt at this -- see repo
+        # history around 2026-08-21 if that ever needs revisiting.
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: appimage-latest
-          name: ScreenWatch AppImage (latest build)
+          tag_name: appimage-latest-screen-change-q8eylj
+          name: ScreenWatch AppImage (latest build, screen-change-auto-click-q8eylj)
           body: |
             Automatically built from commit ${{ github.sha }} by the
             `Build AppImage` workflow. Download the `.AppImage` file below,
