@@ -1,0 +1,20 @@
+# Requirements for the AppImage build (read by python-appimage's `build app`
+# command; see build-appimage.sh). Kept in sync by hand with ../../requirements.txt
+# since python-appimage's own installer, not pip in this repo, consumes this file.
+mss>=9.0.0
+numpy>=1.21
+pynput>=1.7.6
+Pillow>=9.0.0
+
+# ScreenWatch itself, installed from a source tarball of this branch.
+#
+# NOT a "git+...@branch#egg=..." VCS URL: python-appimage's own git_warnings
+# filter (meant to hide harmless "Running command git clone/checkout" and
+# "Switched to a new branch" progress messages pip writes to stderr) doesn't
+# match every git version's exact wording, and one mismatch is enough for a
+# harmless line to be misread as a fatal error and abort the build (hit for
+# real in a previous attempt at this packaging). Installing from a plain
+# tarball URL sidesteps it entirely: pip never invokes git, so none of those
+# stderr lines exist to be misclassified. Update this to a release tag's
+# archive URL once one exists.
+https://github.com/mozaher/Marwan_AutoProgram/archive/refs/heads/claude/screen-change-auto-click-q8eylj.tar.gz

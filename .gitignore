@@ -17,3 +17,8 @@ venv/
 
 # Local config the app writes at runtime
 config.json
+
+# Packaging build outputs (produced by build-appimage.sh)
+packaging/appimage/*.AppImage
+packaging/appimage/AppDir/
+packaging/appimage/base.AppImage

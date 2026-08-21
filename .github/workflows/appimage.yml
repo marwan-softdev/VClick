@@ -1,0 +1,31 @@
+name: Build AppImage
+
+on:
+  push:
+    branches:
+      - claude/screen-change-auto-click-q8eylj
+    paths:
+      - "screenwatch/**"
+      - "pyproject.toml"
+      - "packaging/appimage/**"
+      - ".github/workflows/appimage.yml"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build AppImage
+        run: bash packaging/appimage/build-appimage.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScreenWatch-AppImage
+          path: packaging/appimage/ScreenWatch-*.AppImage
+          if-no-files-found: error
