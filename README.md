@@ -68,9 +68,9 @@ git clone <this-repo> screenwatch && cd screenwatch
 ./install.sh      # installs python3-tk + ScreenWatch, adds an app-menu icon
 ```
 
-That's it — from then on, open **ScreenWatch** from your application menu /
-app list like any other program (search for it by name). No terminal needed
-after this one-time install.
+ScreenWatch opens automatically once the install finishes. From then on,
+open it from your application menu / app list like any other program (search
+for it by name). No terminal needed after this one-time install.
 
 #### No sudo / no terminal at all: AppImage
 
@@ -79,8 +79,10 @@ self-contained `ScreenWatch-*.AppImage` (bundled Python, Tkinter, and
 dependencies included) from the
 **[`appimage-latest-screen-change-q8eylj` release](../../releases/tag/appimage-latest-screen-change-q8eylj)**. Mark it
 executable once (a checkbox in your file manager, no typing) and double-click
-it from then on — no install step, no root, nothing to build. See
-[`packaging/appimage/`](packaging/appimage/) for how it's built.
+it from then on — no install step, no root, nothing to build. (The build
+tooling behind that release lives in `packaging/appimage/` in the full
+repository on GitHub — it's deliberately left out of the source zip above,
+which is for the install.sh/install.bat path.)
 
 <details>
 <summary>Manual install (no launcher icon, no python3-tk auto-install)</summary>

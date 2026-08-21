@@ -80,3 +80,14 @@ echo "Done! ScreenWatch is installed."
 echo "  - Open it from your application menu / app list (search \"ScreenWatch\")."
 echo "  - Or from a terminal:  ./run.sh"
 echo "  - Diagnostics:         ./run.sh --check"
+
+# 4) Launch it now, so the install is a single "run this script and you're
+#    in the app" step rather than requiring a second trip to the app menu.
+if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    echo "Launching ScreenWatch..."
+    nohup "$REPO_DIR/.venv/bin/screenwatch" >/dev/null 2>&1 &
+    disown
+else
+    echo "No graphical display detected -- open ScreenWatch from your"
+    echo "application menu once you're on the desktop."
+fi

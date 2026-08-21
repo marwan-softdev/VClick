@@ -77,4 +77,8 @@ echo   - Open it from the Start Menu (search "ScreenWatch"), or the new
 echo     desktop icon -- no console window will appear.
 echo   - Or from a terminal:  run.bat
 echo   - Diagnostics:         run.bat --check
+
+echo Launching ScreenWatch...
+start "" "%TARGET%"
+
 endlocal
