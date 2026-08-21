@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 REPO_DIR="$(pwd)"
 
-echo "== ScreenWatch installer =="
+echo "== ScreenWatch installer (2026-08-21) =="
 
 # 1) Make sure system Tkinter is present (can't be pip-installed reliably).
 if ! python3 -c "import tkinter" >/dev/null 2>&1; then
