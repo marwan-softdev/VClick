@@ -8,15 +8,19 @@ package steps (Tkinter, `python3-venv`).
 
 ## Getting a build
 
-**Easiest: download the pre-built AppImage from CI.** Every push to this
-branch that touches `screenwatch/`, `pyproject.toml`, or `packaging/appimage/`
-triggers the `Build AppImage` GitHub Actions workflow, which uploads
-`ScreenWatch-*.AppImage` as a workflow artifact — see the
-[Actions tab](../../actions/workflows/appimage.yml). Downloading a workflow
-artifact needs you to be logged into GitHub; if that's not workable, ask for
-it to be attached to a release instead.
+**For end users: download the single `.AppImage` file, don't build it.**
+Every push to this branch that touches `screenwatch/`, `pyproject.toml`, or
+`packaging/appimage/` triggers the `Build AppImage` GitHub Actions workflow,
+which (after a real build and a smoke test) publishes the result to the
+[**`appimage-latest` release**](../../releases/tag/appimage-latest) — a
+stable, direct-download link to just that one file, deliberately kept
+separate from the branch's *source* zip (which is for the `install.sh`
+terminal-install path and still contains this build tooling). That release
+URL doesn't change between builds; downloading it never requires a GitHub
+login, unlike a workflow-run artifact.
 
-**Building it yourself** needs a machine with normal internet access to
+**Building it yourself** (for a different CPU architecture, or to test a
+change to this packaging) needs a machine with normal internet access to
 GitHub and PyPI (this is what the CI workflow does):
 
 ```bash

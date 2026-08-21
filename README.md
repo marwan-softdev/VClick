@@ -74,12 +74,13 @@ after this one-time install.
 
 #### No sudo / no terminal at all: AppImage
 
-Prefer a single portable file, or don't have root access? See
-**[`packaging/appimage/`](packaging/appimage/)** — it builds a self-contained
-`ScreenWatch-*.AppImage` with its own bundled Python, Tkinter, and
-dependencies. Mark it executable once (a checkbox in your file manager, no
-typing) and double-click it from then on — no install step, no root, nothing
-else to set up.
+Prefer a single portable file, or don't have root access? Download the
+self-contained `ScreenWatch-*.AppImage` (bundled Python, Tkinter, and
+dependencies included) from the
+**[`appimage-latest` release](../../releases/tag/appimage-latest)**. Mark it
+executable once (a checkbox in your file manager, no typing) and double-click
+it from then on — no install step, no root, nothing to build. See
+[`packaging/appimage/`](packaging/appimage/) for how it's built.
 
 <details>
 <summary>Manual install (no launcher icon, no python3-tk auto-install)</summary>
