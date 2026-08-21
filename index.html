@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScreenWatch — watch a screen area and auto-click when it changes</title>
+<meta name="description" content="ScreenWatch watches a screen area you pick and clicks a point you pick the instant it changes visually. Lightweight, cross-platform, built to run for hours.">
+<link rel="icon" href="assets/icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <img src="assets/icon.png" alt="" width="28" height="28">
+      <span>ScreenWatch</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#download">Download</a>
+      <a href="https://github.com/mozaher/Marwan_AutoProgram" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero" id="top">
+    <div class="wrap hero-inner">
+      <div class="hero-copy">
+        <h1>Watch a screen area.<br>Click the instant it changes.</h1>
+        <p class="lede">
+          ScreenWatch continuously monitors a region you pick — a button, a
+          counter, a progress bar — and clicks a point you pick the moment it
+          changes visually. Selection happens live, directly on your real
+          screen. Built to sit in the background for hours on almost nothing.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#download">Download ScreenWatch</a>
+          <a class="btn btn-ghost" href="https://github.com/mozaher/Marwan_AutoProgram" target="_blank" rel="noopener">View source</a>
+        </div>
+        <p class="platforms">Linux &amp; Windows · MIT licensed · no account, no telemetry</p>
+      </div>
+      <div class="hero-shot">
+        <img src="assets/screenshot.png" alt="ScreenWatch's main window, showing the target region, click point, and detection sliders">
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="wrap">
+      <h2>What it does</h2>
+      <div class="grid">
+
+        <div class="card">
+          <h3>Live, real-screen selection</h3>
+          <p>The screen is never covered while you select. Drag over your
+          real, moving desktop to pick the watch area and the click point —
+          no frozen snapshot.</p>
+        </div>
+
+        <div class="card">
+          <h3>Colour-aware detection</h3>
+          <p>Reacts to hue changes, not just brightness — a button swapping
+          colour is caught even when a plain grayscale check would miss it.
+          A noise filter ignores render/compression jitter.</p>
+        </div>
+
+        <div class="card">
+          <h3>Two detection modes</h3>
+          <p>React to <em>any</em> change from the previous frame, or to a
+          <em>deviation</em> from a fixed starting state — whichever matches
+          what you're watching for.</p>
+        </div>
+
+        <div class="card">
+          <h3>See exactly why it clicked</h3>
+          <p>Every click is logged with a picture of the pixels that
+          triggered it — changed areas highlighted in red against a
+          desaturated background, browsable per click.</p>
+        </div>
+
+        <div class="card">
+          <h3>Customizable hotkeys</h3>
+          <p>Start, stop, and quit with global keyboard shortcuts you record
+          yourself, matched robustly across keyboard layouts and modifier
+          states.</p>
+        </div>
+
+        <div class="card">
+          <h3>Built for long runs</h3>
+          <p>The watched region is down-sampled before every comparison, so
+          detection cost stays independent of your monitor size — comfortably
+          under 1% of one CPU core for a multi-hour session.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="how" id="how-it-works">
+    <div class="wrap">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><strong>Select the region</strong> to watch, right on your live screen.</li>
+        <li><strong>Select the point</strong> to click when it changes.</li>
+        <li><strong>Tune sensitivity</strong> — react to a flicker, or only to something big.</li>
+        <li><strong>Press Start.</strong> ScreenWatch clicks the instant the region changes, and logs why.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="download" id="download">
+    <div class="wrap">
+      <h2>Download</h2>
+      <p class="download-note">
+        More install options — an AppImage, a proper Windows installer — are
+        on the way. For now, grab the source and run the installer script for
+        your platform.
+      </p>
+
+      <div class="grid download-grid">
+
+        <div class="card card-download">
+          <h3>Source (Linux &amp; Windows)</h3>
+          <p>
+            A zip of the current source. Extract it, then run
+            <code>install.sh</code> (Linux) or <code>install.bat</code>
+            (Windows) — each sets up a virtual environment and adds a
+            launcher icon to your application menu / Start Menu.
+          </p>
+          <a class="btn btn-primary" href="https://github.com/mozaher/Marwan_AutoProgram/archive/refs/heads/claude/screen-change-auto-click-q8eylj.zip">
+            Download .zip
+          </a>
+        </div>
+
+        <div class="card card-download card-soon">
+          <h3>AppImage <span class="badge">coming soon</span></h3>
+          <p>One portable file for Linux — mark it executable once, then
+          double-click it from then on. No install step.</p>
+        </div>
+
+        <div class="card card-download card-soon">
+          <h3>Windows installer <span class="badge">coming soon</span></h3>
+          <p>A standalone <code>.exe</code> that bundles everything needed —
+          no separate Python install required.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <span>ScreenWatch — MIT License</span>
+    <a href="https://github.com/mozaher/Marwan_AutoProgram" target="_blank" rel="noopener">github.com/mozaher/Marwan_AutoProgram</a>
+  </div>
+</footer>
+
+</body>
+</html>
