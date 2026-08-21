@@ -24,6 +24,21 @@ jobs:
       - name: Build AppImage
         run: bash packaging/appimage/build-appimage.sh
 
+      - name: Smoke-test the bundled runtime
+        # Confirms the AppImage's own bundled Python actually has a working
+        # Tkinter (the one thing python-appimage's manylinux base image
+        # wasn't locally verifiable to include) and that ScreenWatch itself
+        # imports and runs inside it -- not just that the file exists.
+        run: |
+          cd packaging/appimage
+          appimage="$(ls ScreenWatch-*.AppImage)"
+          chmod +x "$appimage"
+          "./$appimage" --appimage-extract >/dev/null
+          out="$(./squashfs-root/AppRun --check)"
+          echo "$out"
+          echo "$out" | grep -q "tkinter      : available"
+          echo "$out" | grep -q "mss (capture): available"
+
       - uses: actions/upload-artifact@v4
         with:
           name: ScreenWatch-AppImage
