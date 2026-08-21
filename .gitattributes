@@ -4,5 +4,7 @@
 # meant to be two separate distribution channels, not bundled together.
 # The files stay tracked in git (needed for CI, which clones rather than
 # archiving) -- this only affects what a generated archive contains.
+/packaging export-ignore
 /packaging/** export-ignore
+/.github export-ignore
 /.github/** export-ignore
