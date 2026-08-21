@@ -33,7 +33,27 @@ if [ -d ".venv" ] && { [ ! -f ".venv/bin/activate" ] || [ ! -x ".venv/bin/python
     rm -rf .venv
 fi
 if [ ! -d ".venv" ]; then
-    python3 -m venv .venv
+    venv_err="$(python3 -m venv .venv 2>&1)" || {
+        echo "$venv_err" >&2
+        if echo "$venv_err" | grep -qi "ensurepip" && command -v apt-get >/dev/null 2>&1; then
+            # Debian/Ubuntu split ensurepip out of the base python3 package
+            # into a version-specific one (e.g. python3.12-venv). Prefer the
+            # exact name Python's own error suggests; otherwise derive it
+            # from the running interpreter's version, falling back to the
+            # generic meta-package if that specific install fails.
+            venv_pkg="$(echo "$venv_err" | grep -oE 'python3\.[0-9]+-venv' | head -n1 || true)"
+            if [ -z "$venv_pkg" ]; then
+                venv_pkg="python3.$(python3 -c 'import sys; print(sys.version_info[1])')-venv"
+            fi
+            echo "Missing the $venv_pkg system package -- installing it and retrying..."
+            rm -rf .venv
+            sudo apt-get update || true
+            sudo apt-get install -y "$venv_pkg" || sudo apt-get install -y python3-venv
+            python3 -m venv .venv
+        else
+            exit 1
+        fi
+    }
 fi
 # shellcheck disable=SC1091
 . .venv/bin/activate
