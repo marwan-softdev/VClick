@@ -25,6 +25,13 @@ fi
 
 # 2) Create a virtualenv and install ScreenWatch (editable, so the app keeps
 #    reading its source/assets straight from this checkout).
+# A previous run may have left an incomplete .venv (interrupted, disk full,
+# etc.) -- one that exists but has no working interpreter. Detect that and
+# start fresh rather than fail trying to activate/use a broken environment.
+if [ -d ".venv" ] && { [ ! -f ".venv/bin/activate" ] || [ ! -x ".venv/bin/python" ]; }; then
+    echo "Found an incomplete .venv from an earlier install attempt -- removing it and starting fresh."
+    rm -rf .venv
+fi
 if [ ! -d ".venv" ]; then
     python3 -m venv .venv
 fi

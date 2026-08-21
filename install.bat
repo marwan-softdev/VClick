@@ -22,6 +22,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM A previous run may have left an incomplete .venv (interrupted, disk full,
+REM etc.) -- one that exists but has no working interpreter. Detect that and
+REM start fresh rather than fail trying to use a broken environment.
+if exist ".venv" if not exist ".venv\Scripts\python.exe" (
+    echo Found an incomplete .venv from an earlier install attempt -- removing it and starting fresh.
+    rmdir /s /q ".venv"
+)
+
 if not exist ".venv" (
     echo Creating virtual environment...
     python -m venv .venv
