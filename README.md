@@ -83,16 +83,6 @@ python -m screenwatch
 ```
 </details>
 
-#### Even simpler: AppImage or Flatpak
-
-Prefer not to touch a terminal at all? See **[`packaging/`](packaging/)** —
-it builds:
-- an **AppImage**: one file, mark it executable once (a checkbox in your file
-  manager, no typing), double-click from then on — no install step;
-- a **Flatpak**, installable by double-clicking the built `.flatpak` bundle
-  through Software Manager, and the basis of an eventual Flathub submission
-  ("search ScreenWatch in Software Manager, click Install" — pending review).
-
 ### Windows
 
 ```bat

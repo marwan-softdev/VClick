@@ -17,11 +17,3 @@ venv/
 
 # Local config the app writes at runtime
 config.json
-
-# Packaging build outputs (produced by build-appimage.sh / flatpak-builder)
-packaging/appimage/*.AppImage
-packaging/appimage/ScreenWatch.appdata.xml
-.flatpak-builder/
-packaging/flatpak/build-dir/
-packaging/flatpak/repo/
-*.flatpak
