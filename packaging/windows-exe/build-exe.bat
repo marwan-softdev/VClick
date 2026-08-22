@@ -13,7 +13,10 @@ if errorlevel 1 (
     echo Failed to upgrade pip.
     exit /b 1
 )
-pip install -e .
+REM A regular (non-editable) install: an editable install's import-hook
+REM machinery is invisible to PyInstaller's static analyzer, which then
+REM fails to bundle any screenwatch submodule at all (confirmed for real).
+pip install .
 if errorlevel 1 (
     echo Failed to install ScreenWatch's dependencies.
     exit /b 1
