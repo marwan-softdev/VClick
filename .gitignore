@@ -22,3 +22,6 @@ config.json
 packaging/appimage/*.AppImage
 packaging/appimage/AppDir/
 packaging/appimage/base.AppImage
+
+# Packaging build outputs (produced by build-source-zips.sh)
+packaging/source-packages/*.zip
