@@ -24,7 +24,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-pyinstaller --onefile --windowed --noconfirm --name ScreenWatch --icon screenwatch\assets\icon.ico --add-data "screenwatch\assets;screenwatch\assets" --hidden-import mss.windows --hidden-import pynput.mouse._win32 --hidden-import pynput.keyboard._win32 --distpath packaging\windows-exe\dist --workpath packaging\windows-exe\build --specpath packaging\windows-exe screenwatch\__main__.py
+pyinstaller --onefile --windowed --noconfirm --name ScreenWatch --icon screenwatch\assets\icon.ico --add-data "screenwatch\assets;screenwatch\assets" --hidden-import mss.windows --hidden-import pynput.mouse._win32 --hidden-import pynput.keyboard._win32 --distpath packaging\windows-exe\dist --workpath packaging\windows-exe\build --specpath packaging\windows-exe packaging\windows-exe\entrypoint.py
 if errorlevel 1 (
     echo PyInstaller build failed.
     exit /b 1

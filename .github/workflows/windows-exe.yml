@@ -37,7 +37,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
           pip install pyinstaller
-          pyinstaller --onefile --console --noconfirm --name ScreenWatch-check --add-data "screenwatch\assets;screenwatch\assets" --hidden-import mss.windows --hidden-import pynput.mouse._win32 --hidden-import pynput.keyboard._win32 --distpath packaging\windows-exe\check-dist screenwatch\__main__.py
+          pyinstaller --onefile --console --noconfirm --name ScreenWatch-check --add-data "screenwatch\assets;screenwatch\assets" --hidden-import mss.windows --hidden-import pynput.mouse._win32 --hidden-import pynput.keyboard._win32 --distpath packaging\windows-exe\check-dist packaging\windows-exe\entrypoint.py
 
       - name: Smoke-test the bundled runtime
         shell: cmd
