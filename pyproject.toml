@@ -32,10 +32,10 @@ dependencies = [
 dev = ["pytest>=7.0"]
 
 [project.gui-scripts]
-screenwatch = "screenwatch.__main__:main"
+screenwatch = "screenwatch.cli:main"
 
 [project.scripts]
-screenwatch-cli = "screenwatch.__main__:main"
+screenwatch-cli = "screenwatch.cli:main"
 
 [tool.setuptools]
 packages = ["screenwatch"]
