@@ -6,6 +6,9 @@
 <title>ScreenWatch — watch a screen area and auto-click when it changes</title>
 <meta name="description" content="ScreenWatch watches a screen area you pick and clicks a point you pick the instant it changes visually. Lightweight, cross-platform, built to run for hours.">
 <link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,7 +16,7 @@
 <header class="nav">
   <div class="wrap nav-inner">
     <a class="brand" href="#top">
-      <img src="assets/icon.png" alt="" width="28" height="28">
+      <span class="brand-mark"><img src="assets/icon.png" alt=""></span>
       <span>ScreenWatch</span>
     </a>
     <nav class="nav-links">
@@ -46,6 +49,23 @@
       <div class="hero-shot">
         <img src="assets/screenshot.png" alt="ScreenWatch's main window, showing the target region, click point, and detection sliders">
       </div>
+    </div>
+  </section>
+
+  <section class="demo" id="demo">
+    <div class="wrap">
+      <h2>See it in action</h2>
+      <div class="demo-frame">
+        <video autoplay muted loop playsinline poster="assets/poster.jpg">
+          <source src="assets/demo.webm" type="video/webm">
+          <source src="assets/demo.mp4" type="video/mp4">
+        </video>
+      </div>
+      <p class="demo-note">
+        A real, unedited recording: press Start, the watched panel changes
+        state, ScreenWatch clicks it instantly, and the Why/Log tab shows
+        exactly which pixels triggered the click.
+      </p>
     </div>
   </section>
 
