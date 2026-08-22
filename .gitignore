@@ -25,3 +25,9 @@ packaging/appimage/base.AppImage
 
 # Packaging build outputs (produced by build-source-zips.sh)
 packaging/source-packages/*.zip
+
+# Packaging build outputs (produced by build-exe.bat / PyInstaller)
+packaging/windows-exe/dist/
+packaging/windows-exe/build/
+packaging/windows-exe/check-dist/
+packaging/windows-exe/*.spec
