@@ -8,7 +8,7 @@
 <link rel="icon" href="assets/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -75,6 +75,9 @@
       <div class="grid">
 
         <div class="card">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="6"/><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/></svg>
+          </div>
           <h3>Live, real-screen selection</h3>
           <p>The screen is never covered while you select. Drag over your
           real, moving desktop to pick the watch area and the click point —
@@ -82,6 +85,9 @@
         </div>
 
         <div class="card">
+          <div class="card-icon card-icon-accent">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c-4 4.5-6 8-6 11a6 6 0 0 0 12 0c0-3-2-6.5-6-11Z"/></svg>
+          </div>
           <h3>Colour-aware detection</h3>
           <p>Reacts to hue changes, not just brightness — a button swapping
           colour is caught even when a plain grayscale check would miss it.
@@ -89,6 +95,9 @@
         </div>
 
         <div class="card">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="16" cy="12" r="3"/></svg>
+          </div>
           <h3>Two detection modes</h3>
           <p>React to <em>any</em> change from the previous frame, or to a
           <em>deviation</em> from a fixed starting state — whichever matches
@@ -96,6 +105,9 @@
         </div>
 
         <div class="card">
+          <div class="card-icon card-icon-accent">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
           <h3>See exactly why it clicked</h3>
           <p>Every click is logged with a picture of the pixels that
           triggered it — changed areas highlighted in red against a
@@ -103,6 +115,9 @@
         </div>
 
         <div class="card">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="6" cy="10" r=".6" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r=".6" fill="currentColor" stroke="none"/><circle cx="14" cy="10" r=".6" fill="currentColor" stroke="none"/><circle cx="18" cy="10" r=".6" fill="currentColor" stroke="none"/><line x1="6" y1="14" x2="14" y2="14"/></svg>
+          </div>
           <h3>Customizable hotkeys</h3>
           <p>Start, stop, and quit with global keyboard shortcuts you record
           yourself, matched robustly across keyboard layouts and modifier
@@ -110,6 +125,9 @@
         </div>
 
         <div class="card">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,14 7,14 9,7 13,19 16,10 18,14 22,14"/></svg>
+          </div>
           <h3>Built for long runs</h3>
           <p>The watched region is down-sampled before every comparison, so
           detection cost stays independent of your monitor size — comfortably
@@ -124,10 +142,22 @@
     <div class="wrap">
       <h2>How it works</h2>
       <ol class="steps">
-        <li><strong>Select the region</strong> to watch, right on your live screen.</li>
-        <li><strong>Select the point</strong> to click when it changes.</li>
-        <li><strong>Tune sensitivity</strong> — react to a flicker, or only to something big.</li>
-        <li><strong>Press Start.</strong> ScreenWatch clicks the instant the region changes, and logs why.</li>
+        <li>
+          <div class="step-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 8V4h4"/><path d="M17 4h4v4"/><path d="M21 16v4h-4"/><path d="M7 20H3v-4"/></svg></div>
+          <strong>Select the region</strong> to watch, right on your live screen.
+        </li>
+        <li>
+          <div class="step-icon step-icon-accent"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6" fill="currentColor" stroke="none"/></svg></div>
+          <strong>Select the point</strong> to click when it changes.
+        </li>
+        <li>
+          <div class="step-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="var(--color-paper)"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2" fill="var(--color-paper)"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="7" cy="18" r="2" fill="var(--color-paper)"/></svg></div>
+          <strong>Tune sensitivity</strong> — react to a flicker, or only to something big.
+        </li>
+        <li>
+          <div class="step-icon step-icon-accent"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="none"><polygon points="6,4 20,12 6,20"/></svg></div>
+          <strong>Press Start.</strong> ScreenWatch clicks the instant the region changes, and logs why.
+        </li>
       </ol>
     </div>
   </section>
