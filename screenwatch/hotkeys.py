@@ -111,6 +111,23 @@ def modifier_of(key) -> Optional[str]:
     return _MOD_ALIASES.get(name.lower())
 
 
+def _display_key(key: str) -> str:
+    """Render a matching token for display.
+
+    Most tokens are a single character or a named key ("f5", "space") and
+    just need capitalizing. The one exception is :func:`normalize_key`'s
+    last-resort fallback, a raw ``vk<code>`` virtual-key/keysym number for a
+    key it couldn't otherwise identify -- shown verbatim that reads as an
+    internal error ("Vk65301"), not a key name, so it's reworded into an
+    honest "unrecognized key" label instead.
+    """
+    if len(key) == 1:
+        return key.upper()
+    if key.startswith("vk") and key[2:].isdigit():
+        return f"Unknown key ({key[2:]})"
+    return key.capitalize()
+
+
 def pretty(hotkey: str) -> str:
     """``"<ctrl>+<shift>+s"`` -> ``"Ctrl+Shift+S"`` for display."""
     parsed = parse_hotkey(hotkey)
@@ -119,7 +136,7 @@ def pretty(hotkey: str) -> str:
     mods, key = parsed
     order = [m for m in ("ctrl", "alt", "shift", "cmd") if m in mods]
     parts = [m.capitalize() for m in order]
-    parts.append(key.upper() if len(key) == 1 else key.capitalize())
+    parts.append(_display_key(key))
     return "+".join(parts)
 
 
@@ -210,5 +227,5 @@ class HotkeyManager:
 def _describe(mods: FrozenSet[str], key: str) -> str:
     order = [m for m in ("ctrl", "alt", "shift", "cmd") if m in mods]
     parts = [m.capitalize() for m in order]
-    parts.append(key.upper() if len(key) == 1 else key.capitalize())
+    parts.append(_display_key(key))
     return "+".join(parts)

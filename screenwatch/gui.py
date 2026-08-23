@@ -35,12 +35,20 @@ _CARD = "#ffffff"          # card surface
 _CARD_BORDER = "#e4e4e9"   # hairline card border
 _DIVIDER = "#ececef"       # subtle in-card divider (header vs. content)
 _TEXT = "#1c1c1e"          # primary text
-_MUTED = "#8a8a8e"         # secondary/muted text
+# Muted text: darkened from an earlier #8a8a8e (~3.4:1 on white -- below the
+# WCAG AA 4.5:1 minimum for normal text) to a value that actually clears it.
+_MUTED = "#6e6e73"         # secondary/muted text, ~5.1:1 on white
 _MUTED2 = "#c2c2c7"        # faint borders only (e.g. unchecked checkbox/radio
                            # outlines) -- too low-contrast for text on white
                            # (~1.8:1); use _MUTED for anything meant to be read
-_ACCENT = "#0a84ff"        # primary accent -- the Start button, badges, links
+_ACCENT = "#0a84ff"        # primary accent -- fills only (Start button,
+                           # slider/progress fill, checkbox/radio fill): as
+                           # *text* on white or on _ACCENT_TINT it only hits
+                           # ~3.2-3.7:1, so badge/link text uses _ACCENT_TEXT
+                           # instead, a darker shade of the same blue.
 _ACCENT_HOVER = "#0071e3"
+_ACCENT_TEXT = "#0a5fc0"   # accent as *text* -- ~5.5:1 on _ACCENT_TINT, ~6.2:1
+                           # on white, so badges/links actually clear AA
 _ACCENT_TINT = "#e8f2ff"   # light accent fill for "value is set" badges
 _TRACK = "#e4e4e9"         # slider / progress-bar track
 
@@ -146,7 +154,7 @@ class ScreenWatchApp:
         self._row_seq = 0           # monotonic, unique per window (see _log_detection)
         self._selected = None       # the Detection currently shown
         self._preview_photo = None  # keep a ref so Tk doesn't GC the image
-        self._slider_labels = {}    # slider label text -> its value badge
+        self._slider_labels = {}    # slider label text -> its value entry's StringVar
 
         root.title(f"{__app_name__} — auto-click on change")
         root.minsize(560, 760)
@@ -242,6 +250,41 @@ class ScreenWatchApp:
         self._build_tab_hotkeys(tabview)
         self._build_tab_why(tabview)
 
+        self._add_focus_rings(root)
+
+    def _add_focus_rings(self, widget) -> None:
+        """Give every keyboard-focusable control a visible ring when it has
+        focus -- CustomTkinter draws none by default, which leaves keyboard
+        users with no on-screen indication of where they are. Every CTk
+        widget is still a plain tk.Frame/Entry underneath, so Tk's own
+        highlightthickness/highlightcolor mechanism still works; it's just
+        that CTk's own constructor/configure() reject those as "unsupported"
+        kwargs, so this goes around that via the base tk.Widget.configure().
+        highlightbackground is set to the widget's own resolved background
+        (_bg_color, via CTk's own light/dark resolver) so the 2px ring is
+        invisible until the widget actually has focus."""
+        tk = self.tk
+        ctk = self.ctk
+        focusable = (ctk.CTkButton, ctk.CTkEntry, ctk.CTkCheckBox,
+                     ctk.CTkRadioButton, ctk.CTkComboBox)
+
+        def visit(node):
+            if isinstance(node, focusable):
+                bg = getattr(node, "_bg_color", _BG)
+                try:
+                    bg = node._apply_appearance_mode(bg)
+                except Exception:  # noqa: BLE001 - a bad bg must not break the UI
+                    bg = _BG
+                try:
+                    tk.Widget.configure(node, highlightthickness=2,
+                                         highlightcolor=_ACCENT_TEXT, highlightbackground=bg)
+                except tk.TclError:
+                    pass
+            for child in node.winfo_children():
+                visit(child)
+
+        visit(widget)
+
     def _build_control_bar(self, root) -> None:
         ctk = self.ctk
         outer = ctk.CTkFrame(root, fg_color="transparent")
@@ -326,7 +369,7 @@ class ScreenWatchApp:
         is set) and plain muted text (nothing set yet) — so the state is
         visible at a glance, not just from reading the words."""
         if is_set:
-            label.configure(text=text, fg_color=_ACCENT_TINT, text_color=_ACCENT)
+            label.configure(text=text, fg_color=_ACCENT_TINT, text_color=_ACCENT_TEXT)
         else:
             label.configure(text=text, fg_color="transparent", text_color=_MUTED)
 
@@ -358,13 +401,13 @@ class ScreenWatchApp:
 
         self.sensitivity_var = self.tk.IntVar()
         self._slider(detect, 2, "Sensitivity", self.sensitivity_var, 1, 100,
-                     hint="higher = reacts to smaller changes", steps=99)
+                     hint="higher = reacts to smaller changes", steps=99, integer=True)
         self.fps_var = self.tk.DoubleVar()
         self._slider(detect, 4, "Check rate (fps)", self.fps_var, 0.5, 30,
                      hint="lower = less CPU", fmt="{:.1f}")
         self.threshold_var = self.tk.IntVar()
         self._slider(detect, 6, "Noise filter", self.threshold_var, 0, 100,
-                     hint="ignore per-pixel changes below this", steps=100)
+                     hint="ignore per-pixel changes below this", steps=100, integer=True)
 
         ctk.CTkFrame(detect, height=1, fg_color=_DIVIDER).grid(
             row=8, column=0, columnspan=3, sticky="ew", padx=16, pady=(2, 8))
@@ -454,7 +497,7 @@ class ScreenWatchApp:
         ctk.CTkLabel(card, text="Start / Stop", text_color=_MUTED, anchor="w").grid(
             row=3, column=0, sticky="w", padx=(16, 0), pady=(0, 14))
         self.toggle_hotkey_lbl = ctk.CTkLabel(card, text="", font=("Sans", 12, "bold"),
-                                               fg_color=_ACCENT_TINT, text_color=_ACCENT,
+                                               fg_color=_ACCENT_TINT, text_color=_ACCENT_TEXT,
                                                corner_radius=6, anchor="w")
         self.toggle_hotkey_lbl.grid(row=3, column=1, sticky="w", padx=8, pady=(0, 14))
         self._btn(card, "Change…", lambda: self._capture_hotkey("toggle"), width=90).grid(
@@ -463,7 +506,7 @@ class ScreenWatchApp:
         ctk.CTkLabel(card, text="Quit", text_color=_MUTED, anchor="w").grid(
             row=4, column=0, sticky="w", padx=(16, 0), pady=(0, 16))
         self.quit_hotkey_lbl = ctk.CTkLabel(card, text="", font=("Sans", 12, "bold"),
-                                             fg_color=_ACCENT_TINT, text_color=_ACCENT,
+                                             fg_color=_ACCENT_TINT, text_color=_ACCENT_TEXT,
                                              corner_radius=6, anchor="w")
         self.quit_hotkey_lbl.grid(row=4, column=1, sticky="w", padx=8, pady=(0, 16))
         self._btn(card, "Change…", lambda: self._capture_hotkey("quit"), width=90).grid(
@@ -507,6 +550,32 @@ class ScreenWatchApp:
         ctk.CTkLabel(top, text="Click any row in the log to see why that click happened.",
                     text_color=_MUTED, anchor="w").pack(anchor="w", pady=(4, 0))
 
+        # Packed before the split (which takes all remaining space below
+        # it) so these rows always get the room they need instead of being
+        # squeezed by the panes -- a ttk.PanedWindow divides its *already
+        # allocated* space by each pane's weight once at layout time and
+        # doesn't grow a pane to fit new content added to it later, so
+        # anything placed inside a pane can silently overflow its frozen
+        # bounds. Confirmed for real while building this: both the caption
+        # (once it held a real, longer two-line message instead of the
+        # short placeholder) and a button row briefly lived inside the
+        # picture pane below and were clipped/overlapped the window's
+        # bottom bar instead of the pane growing for them. Both live here
+        # as normal siblings instead, in reading order under the pane they
+        # describe/act on: image -> caption -> the actions that use it.
+        pic_btns = ctk.CTkFrame(tab, fg_color="transparent")
+        pic_btns.pack(side="bottom", fill="x", pady=(CARD_GAP, 0))
+        self.save_btn = self._btn(pic_btns, "Save image…", self.save_preview_image,
+                                  width=112, state="disabled")
+        self.save_btn.pack(side="right", padx=(4, 0))
+        self.view_btn = self._btn(pic_btns, "View larger ⤢", self.open_preview_window,
+                                  width=112, state="disabled")
+        self.view_btn.pack(side="right", padx=(4, 0))
+        self.preview_caption = ctk.CTkLabel(tab, text="Red = what changed · cyan box = where.",
+                                            text_color=_MUTED, wraplength=520, justify="left",
+                                            anchor="w")
+        self.preview_caption.pack(side="bottom", fill="x", pady=(4, 0))
+
         # A resizable split: the log on top, the picture below, so neither can
         # crowd the other out and the user can drag the divider. No
         # CustomTkinter equivalent exists, so this stays plain ttk (restyled
@@ -522,8 +591,13 @@ class ScreenWatchApp:
         logframe = ctk.CTkFrame(logcard, fg_color="transparent")
         logframe.pack(fill="both", expand=True, padx=12, pady=12)
         cols = ("click", "time", "change", "image")
+        # height=4 (not more): the log/preview split has a fixed total
+        # budget (the window doesn't grow when this tab is selected -- see
+        # the note above the split), and every extra visible row here is
+        # real height taken from the image pane below. The table scrolls,
+        # so fewer visible rows doesn't lose access to older entries.
         self.log_tree = ttk.Treeview(logframe, columns=cols, show="headings",
-                                     height=6, selectmode="browse")
+                                     height=4, selectmode="browse")
         for col, text, width, anchor in (
             ("click", "#", 50, "center"),
             ("time", "Time", 90, "center"),
@@ -548,7 +622,7 @@ class ScreenWatchApp:
         self.log_tree.bind("<MouseWheel>",
                            lambda e: self.log_tree.yview_scroll(-3 if e.delta > 0 else 3, "units"))
 
-        # --- controls ---
+        # --- controls that act on the log/table itself ---
         btns = ctk.CTkFrame(logcard, fg_color="transparent")
         btns.pack(fill="x", padx=12, pady=(0, 12))
         self.follow_var = tk.BooleanVar(value=True)
@@ -556,12 +630,6 @@ class ScreenWatchApp:
                         fg_color=_ACCENT, hover_color=_ACCENT_HOVER, border_color=_MUTED2,
                         checkmark_color="white", text_color=_TEXT).pack(side="left")
         self._btn(btns, "Clear", self.clear_log, width=70).pack(side="right")
-        self.save_btn = self._btn(btns, "Save image…", self.save_preview_image,
-                                  width=112, state="disabled")
-        self.save_btn.pack(side="right", padx=4)
-        self.view_btn = self._btn(btns, "View larger ⤢", self.open_preview_window,
-                                  width=112, state="disabled")
-        self.view_btn.pack(side="right", padx=4)
 
         # --- the picture for the selected row (lower half of the split) ---
         piccard = ctk.CTkFrame(split, corner_radius=14, fg_color=_CARD,
@@ -574,33 +642,82 @@ class ScreenWatchApp:
             text="No detection selected yet.\nWhen a click is triggered it appears in the log above.",
             text_color=_MUTED, fg_color="transparent")
         self.preview_lbl.pack(fill="both", expand=True)
-        self.preview_caption = ctk.CTkLabel(piccard, text="Red = what changed · cyan box = where.",
-                                            text_color=_MUTED, wraplength=460, justify="left",
-                                            anchor="w")
-        self.preview_caption.pack(anchor="w", padx=12, pady=(0, 12))
 
-    def _slider(self, parent, row, label, var, lo, hi, hint="", fmt="{:.0f}", steps=None):
+        # ttk.PanedWindow only negotiates each pane's *initial* size from
+        # `weight`, using whatever its children happen to need at that one
+        # moment -- confirmed unreliable here (the image pane ended up
+        # shorter than its own required height in practice, clipping the
+        # preview). Forcing the sash to the log card's own natural height
+        # fixes that, but only once this tab has actually been mapped --
+        # tried doing it unconditionally shortly after construction and
+        # got the opposite failure instead: queried while "Why / Log" was
+        # still hidden behind the default tab, logcard.winfo_reqheight()
+        # came back near-zero (an unmapped widget's own children haven't
+        # had a real geometry pass yet), which squeezed the log table
+        # itself down to almost nothing when the sash "fixed" itself.
+        # Deferring this to the tab actually being selected -- a real
+        # geometry pass has happened by then -- gives an accurate reading.
+        # Runs once; a user who drags the sash afterwards keeps their own
+        # sash position, since this only fires again on hotkeys/*other*
+        # tab switches when self._why_split_fixed is still False.
+        self._why_split_fixed = False
+
+        def _on_tab_changed():
+            if self._why_split_fixed or tabview.get() != "Why / Log":
+                return
+            self._why_split_fixed = True
+            self.root.update_idletasks()
+            split.sashpos(0, logcard.winfo_reqheight())
+
+        tabview.configure(command=_on_tab_changed)
+
+    def _slider(self, parent, row, label, var, lo, hi, hint="", fmt="{:.0f}",
+                steps=None, integer=False):
         ctk = self.ctk
         ctk.CTkLabel(parent, text=label, text_color=_MUTED, anchor="w").grid(
             row=row, column=0, sticky="w", padx=(16, 0))
-        value_lbl = ctk.CTkLabel(parent, text="", font=("Sans", 12, "bold"),
-                                  fg_color=_ACCENT_TINT, text_color=_ACCENT,
-                                  corner_radius=6, width=48, anchor="center")
-        value_lbl.grid(row=row, column=2, sticky="e", padx=(0, 16))
 
-        def _changed(_val=None):
-            value_lbl.configure(text=fmt.format(var.get()))
+        # A real editable field, not a read-only badge -- so a value can be
+        # typed exactly rather than only dragged, which matters for anyone
+        # who can't reliably land a slider thumb on a precise point. It
+        # keeps a visible border (unlike the flat, borderless "value is
+        # set" badges used elsewhere for read-only info) so it reads as
+        # something to click into, not just a status display.
+        value_var = self.tk.StringVar(value=fmt.format(var.get()))
+        entry = ctk.CTkEntry(parent, textvariable=value_var, width=56, height=26,
+                              justify="center", fg_color=_CARD, border_color=_CARD_BORDER,
+                              text_color=_ACCENT_TEXT, font=("Sans", 12, "bold"))
+        entry.grid(row=row, column=2, sticky="e", padx=(0, 16))
+
+        def _clamp(v):
+            v = max(lo, min(hi, v))
+            return int(round(v)) if integer else round(v, 2)
+
+        def _from_slider(_val=None):
+            value_var.set(fmt.format(var.get()))
             self._on_setting_change()
 
+        def _from_entry(_evt=None):
+            try:
+                v = _clamp(float(value_var.get()))
+            except (ValueError, self.tk.TclError):
+                v = var.get()
+            var.set(v)
+            value_var.set(fmt.format(var.get()))
+            self._on_setting_change()
+
+        entry.bind("<Return>", _from_entry)
+        entry.bind("<FocusOut>", _from_entry)
+
         extra = {"number_of_steps": steps} if steps else {}
-        ctk.CTkSlider(parent, from_=lo, to=hi, variable=var, command=_changed,
+        ctk.CTkSlider(parent, from_=lo, to=hi, variable=var, command=_from_slider,
                       fg_color=_TRACK, progress_color=_ACCENT, button_color=_ACCENT,
                       button_hover_color=_ACCENT_HOVER, **extra).grid(
             row=row, column=1, sticky="ew", padx=10)
         if hint:
             ctk.CTkLabel(parent, text=hint, text_color=_MUTED, font=("Sans", 10), anchor="w").grid(
                 row=row + 1, column=1, columnspan=2, sticky="w", pady=(0, 10))
-        self._slider_labels[label] = value_lbl
+        self._slider_labels[label] = value_var
 
     def _stepper(self, parent, row, col, var, step, lo, hi, integer=False):
         """A CTkEntry with +/- buttons — CustomTkinter has no Spinbox."""
@@ -627,16 +744,19 @@ class ScreenWatchApp:
                 var.set(lo)
             self._on_setting_change()
 
-        self._btn(frame, "−", lambda: _step(-step), width=28, height=28,
-                  corner_radius=14, font=("Sans", 14)).grid(row=0, column=0)
-        entry = ctk.CTkEntry(frame, textvariable=var, width=60, height=28,
+        # 32x32 (not the initial 28x28): a larger click target for anyone
+        # with imprecise pointing, closer to the commonly-cited 24-44px
+        # comfortable range for a mouse/trackpad target.
+        self._btn(frame, "−", lambda: _step(-step), width=32, height=32,
+                  corner_radius=16, font=("Sans", 15)).grid(row=0, column=0)
+        entry = ctk.CTkEntry(frame, textvariable=var, width=60, height=32,
                               fg_color=_CARD, border_color=_CARD_BORDER, text_color=_TEXT,
                               justify="center")
         entry.grid(row=0, column=1, padx=6)
         entry.bind("<Return>", _on_commit)
         entry.bind("<FocusOut>", _on_commit)
-        self._btn(frame, "+", lambda: _step(step), width=28, height=28,
-                  corner_radius=14, font=("Sans", 14)).grid(row=0, column=2)
+        self._btn(frame, "+", lambda: _step(step), width=32, height=32,
+                  corner_radius=16, font=("Sans", 15)).grid(row=0, column=2)
 
     # ------------------------------------------------------- config <-> UI
     def _sync_widgets_from_config(self) -> None:
@@ -660,9 +780,9 @@ class ScreenWatchApp:
             ("Check rate (fps)", self.fps_var, "{:.1f}"),
             ("Noise filter", self.threshold_var, "{:.0f}"),
         ):
-            lbl = self._slider_labels.get(label)
-            if lbl is not None:
-                lbl.configure(text=fmt.format(var.get()))
+            value_var = self._slider_labels.get(label)
+            if value_var is not None:
+                value_var.set(fmt.format(var.get()))
 
     def _pull_config_from_widgets(self) -> None:
         c = self.config
@@ -985,7 +1105,7 @@ class ScreenWatchApp:
         self.hotkeys.stop()
         self.config.hotkeys_enabled = bool(self.hotkey_enabled_var.get())
         if not self.config.hotkeys_enabled:
-            self._set_hotkey_status("Global hotkeys are disabled.", _MUTED)
+            self._set_hotkey_status("Global hotkeys are disabled.", _MUTED, bar_text="")
             return
         t, q = self.config.hotkey_toggle, self.config.hotkey_quit
         if not (is_valid(t) and is_valid(q)):
@@ -997,8 +1117,13 @@ class ScreenWatchApp:
             q: lambda: self._actions.put("quit"),
         })
         if ok:
+            # The control bar is visible from every tab, so it gets a
+            # shorter, distinct reminder rather than literally repeating
+            # this sentence (which read as clutter -- the same "Active --
+            # ..." message shown twice on screen at once).
             self._set_hotkey_status(
-                f"Active — {pretty(t)} start/stop · {pretty(q)} quit", _OK)
+                f"Active — {pretty(t)} start/stop · {pretty(q)} quit", _OK,
+                bar_text=f"{pretty(t)} start/stop · {pretty(q)} quit")
         else:
             self._set_hotkey_status(
                 f"Unavailable (Wayland or blocked). Use the Start button. {self.hotkeys.error or ''}",
@@ -1012,10 +1137,13 @@ class ScreenWatchApp:
         self.hotkey_status_lbl.configure(
             text=f"✔ {which} hotkey received at {stamp}", text_color=_status_text_color(_OK))
 
-    def _set_hotkey_status(self, text: str, color: str) -> None:
+    def _set_hotkey_status(self, text: str, color: str, bar_text: Optional[str] = None) -> None:
         self.hotkey_status_lbl.configure(text=text, text_color=_status_text_color(color))
-        # Mirror a compact version on the always-visible control bar.
-        self.hotkey_lbl.configure(text=text)
+        # The control bar is visible from every tab; callers pass a
+        # distinct, terser bar_text where the full sentence would just be
+        # duplicate clutter, defaulting to the same text for warnings that
+        # are genuinely worth surfacing everywhere verbatim.
+        self.hotkey_lbl.configure(text=text if bar_text is None else bar_text)
 
     def _capture_hotkey(self, which: str) -> None:
         ctk = self.ctk

@@ -111,13 +111,19 @@ def build_change_preview(
     img = Image.fromarray(out.clip(0, 255).astype(np.uint8), mode="RGB")
 
     # Outline the changed area so small changes are easy to spot at a glance.
+    # This is also the one cue here that doesn't depend on color perception
+    # at all -- a traced boundary, not a tint -- which matters because the
+    # red/grey fill above relies on hue and saturation shifts that can be
+    # hard to distinguish for red-green color blindness. Floored at 3px
+    # (not 1px): the previous width // 100 rounded down to a single,
+    # near-invisible pixel for any region under ~200px on its short side.
     rows = np.flatnonzero(full.any(axis=1))
     cols = np.flatnonzero(full.any(axis=0))
     if rows.size and cols.size:
         draw = ImageDraw.Draw(img)
         draw.rectangle(
             [int(cols[0]), int(rows[0]), int(cols[-1]), int(rows[-1])],
-            outline=(0, 255, 255), width=max(1, min(width, height) // 100),
+            outline=(0, 255, 255), width=max(3, min(width, height) // 60),
         )
 
     img.thumbnail((out_max, out_max), Image.NEAREST)
