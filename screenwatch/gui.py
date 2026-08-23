@@ -192,8 +192,6 @@ class ScreenWatchApp:
         style.map("Treeview", background=[("selected", _ACCENT_TINT)],
                    foreground=[("selected", _TEXT)])
         style.configure("TPanedwindow", background=_BG)
-        style.configure("Vertical.TScrollbar", background=_CARD_BORDER,
-                         troughcolor=_CARD, borderwidth=0, arrowsize=12)
 
     def _build_menu(self) -> None:
         # Native OS menu bar -- CustomTkinter doesn't theme tk.Menu (no
@@ -219,13 +217,8 @@ class ScreenWatchApp:
 
         header = ctk.CTkFrame(root, fg_color="transparent")
         header.pack(fill="x", padx=PAD, pady=(PAD, 4))
-        title_row = ctk.CTkFrame(header, fg_color="transparent")
-        title_row.pack(fill="x")
-        mark = ctk.CTkFrame(title_row, width=10, height=10, corner_radius=5, fg_color=_ACCENT)
-        mark.pack(side="left", padx=(2, 8))
-        mark.pack_propagate(False)
-        ctk.CTkLabel(title_row, text="ScreenWatch", font=("Sans", 21, "bold"),
-                     text_color=_TEXT, anchor="w").pack(side="left")
+        ctk.CTkLabel(header, text="ScreenWatch", font=("Sans", 21, "bold"),
+                     text_color=_TEXT, anchor="w").pack(fill="x")
         ctk.CTkLabel(header, text="Watches a screen area and clicks the instant it changes.",
                      text_color=_MUTED, anchor="w").pack(fill="x", pady=(2, 0))
 
@@ -256,40 +249,18 @@ class ScreenWatchApp:
         self._build_tab_hotkeys(tabview)
         self._build_tab_why(tabview)
 
-        self._add_focus_rings(root)
-
-    def _add_focus_rings(self, widget) -> None:
-        """Give every keyboard-focusable control a visible ring when it has
-        focus -- CustomTkinter draws none by default, which leaves keyboard
-        users with no on-screen indication of where they are. Every CTk
-        widget is still a plain tk.Frame/Entry underneath, so Tk's own
-        highlightthickness/highlightcolor mechanism still works; it's just
-        that CTk's own constructor/configure() reject those as "unsupported"
-        kwargs, so this goes around that via the base tk.Widget.configure().
-        highlightbackground is set to the widget's own resolved background
-        (_bg_color, via CTk's own light/dark resolver) so the 2px ring is
-        invisible until the widget actually has focus."""
-        tk = self.tk
-        ctk = self.ctk
-        focusable = (ctk.CTkButton, ctk.CTkEntry, ctk.CTkCheckBox,
-                     ctk.CTkRadioButton, ctk.CTkComboBox)
-
-        def visit(node):
-            if isinstance(node, focusable):
-                bg = getattr(node, "_bg_color", _BG)
-                try:
-                    bg = node._apply_appearance_mode(bg)
-                except Exception:  # noqa: BLE001 - a bad bg must not break the UI
-                    bg = _BG
-                try:
-                    tk.Widget.configure(node, highlightthickness=2,
-                                         highlightcolor=_ACCENT_TEXT, highlightbackground=bg)
-                except tk.TclError:
-                    pass
-            for child in node.winfo_children():
-                visit(child)
-
-        visit(widget)
+        # Locks the window to its natural size for the tab shown here (the
+        # tallest of the four, since the others are strict subsets of its
+        # settings), so switching tabs afterward never resizes the window --
+        # confirmed for real that it otherwise does: with no geometry() call
+        # at all, Tk keeps auto-fitting the toplevel to whichever tab's
+        # content is currently mapped, and CTkTabview only ever shows one
+        # tab's frame at a time, so the window visibly grew and shrank on
+        # every switch. A fixed size, set once up front, is what actually
+        # reads as "one consistent window" rather than a jumping one; the
+        # window stays user-resizable afterward regardless.
+        root.update_idletasks()
+        root.geometry(f"{root.winfo_reqwidth()}x{root.winfo_reqheight()}")
 
     def _build_control_bar(self, root) -> None:
         ctk = self.ctk
@@ -644,7 +615,17 @@ class ScreenWatchApp:
             self.log_tree.column(col, width=width, anchor=anchor, stretch=(col == "change"))
         self.log_tree.tag_configure("even", background=_CARD)
         self.log_tree.tag_configure("odd", background="#fafafb")
-        scroll = ttk.Scrollbar(logframe, orient="vertical", command=self.log_tree.yview)
+        # A CTkScrollbar, not ttk.Scrollbar -- ttk's is the platform's own
+        # native widget (visible up/down arrow buttons, a chunky 3D-look
+        # thumb on Windows), which looked out of place next to everything
+        # else here and isn't fully overridden by the ttk theme/style calls
+        # above. CTkScrollbar still drives the Treeview's real yview/
+        # yscrollcommand scroll protocol -- that part of the interface is a
+        # standard Tk convention every scrollable widget implements, not
+        # something specific to ttk's own scrollbar.
+        scroll = ctk.CTkScrollbar(logframe, orientation="vertical", command=self.log_tree.yview,
+                                   fg_color="transparent", button_color=_CARD_BORDER,
+                                   button_hover_color="#d5d5da")
         self.log_tree.configure(yscrollcommand=scroll.set)
         scroll.pack(side="right", fill="y")
         self.log_tree.pack(side="left", fill="both", expand=True)
