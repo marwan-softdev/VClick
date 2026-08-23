@@ -243,6 +243,12 @@ class ScreenWatchApp:
             segmented_button_unselected_color=_CARD_BORDER,
             segmented_button_unselected_hover_color="#dadade",
             text_color=_TEXT, text_color_disabled=_MUTED,
+            # Left-aligned (CTkTabview centers by default) so the tab pill
+            # shares the cards' left margin below it instead of floating
+            # centered and narrower than everything it governs -- the two
+            # tiers read as one layout system now, not a disconnected strip
+            # on top of a grid (confirmed in a screenshot review).
+            anchor="w",
         )
         tabview.pack(fill="both", expand=True, padx=PAD, pady=(4, PAD))
         self._build_tab_watch(tabview)
@@ -298,10 +304,19 @@ class ScreenWatchApp:
                                     font=("Sans", 14, "bold"), height=42, corner_radius=12)
         self.start_btn.pack(fill="x", padx=16, pady=(14, 8))
 
-        self.activity = ctk.CTkProgressBar(card, height=5, corner_radius=3,
+        # A bare, unlabeled bar here read as a stuck/broken progress
+        # indicator (what is it counting up to?), especially at rest --
+        # confirmed in a screenshot review. It's real signal once running
+        # (live change intensity vs. the click threshold, from
+        # _handle_event's ev.score), just needed a caption to say so.
+        activity_row = ctk.CTkFrame(card, fg_color="transparent")
+        activity_row.pack(fill="x", padx=16, pady=(0, 10))
+        ctk.CTkLabel(activity_row, text="Activity", text_color=_MUTED,
+                     font=("Sans", 9), width=44, anchor="w").pack(side="left")
+        self.activity = ctk.CTkProgressBar(activity_row, height=5, corner_radius=3,
                                             fg_color=_TRACK, progress_color=_ACCENT)
         self.activity.set(0)
-        self.activity.pack(fill="x", padx=16, pady=(0, 10))
+        self.activity.pack(side="left", fill="x", expand=True)
 
         # A colored dot carries the state at a glance (green = watching,
         # red = error, gray = idle) so it doesn't rely on pastel status
@@ -367,11 +382,15 @@ class ScreenWatchApp:
     def _style_chip(self, label, text, is_set: bool) -> None:
         """Toggle a value label between a filled accent 'badge' (something
         is set) and plain muted text (nothing set yet) — so the state is
-        visible at a glance, not just from reading the words."""
+        visible at a glance, not just from reading the words. The font
+        weight follows too: bold read as a real value either way at a
+        glance (confirmed in a screenshot review -- "Not set" looked as
+        prominent as an actual badge), so only a real value is bold now."""
+        font = ("Sans", 12, "bold" if is_set else "normal")
         if is_set:
-            label.configure(text=text, fg_color=_ACCENT_TINT, text_color=_ACCENT_TEXT)
+            label.configure(text=text, font=font, fg_color=_ACCENT_TINT, text_color=_ACCENT_TEXT)
         else:
-            label.configure(text=text, fg_color="transparent", text_color=_MUTED)
+            label.configure(text=text, font=font, fg_color="transparent", text_color=_MUTED)
 
     def _build_tab_watch(self, tabview) -> None:
         ctk = self.ctk
@@ -439,7 +458,13 @@ class ScreenWatchApp:
         self.button_var = self.tk.StringVar()
         ctk.CTkComboBox(behavior, variable=self.button_var, values=list(CLICK_BUTTONS),
                          width=110, state="readonly", fg_color=_CARD, border_color=_CARD_BORDER,
-                         button_color=_ACCENT, button_hover_color=_ACCENT_HOVER,
+                         # A quiet gray, not the primary accent -- the
+                         # dropdown arrow is routine chrome, not an action,
+                         # and rendering it in Start-button blue competed
+                         # for attention it hadn't earned (confirmed in a
+                         # screenshot review). The arrow glyph itself
+                         # renders dark regardless of this background.
+                         button_color=_CARD_BORDER, button_hover_color="#d5d5da",
                          dropdown_fg_color=_CARD, dropdown_text_color=_TEXT, text_color=_TEXT,
                          command=lambda _v: self._on_setting_change()).grid(
             row=2, column=1, sticky="w", padx=8, pady=(0, 14))
@@ -448,7 +473,13 @@ class ScreenWatchApp:
         self.type_var = self.tk.StringVar()
         ctk.CTkComboBox(behavior, variable=self.type_var, values=list(CLICK_TYPES),
                          width=110, state="readonly", fg_color=_CARD, border_color=_CARD_BORDER,
-                         button_color=_ACCENT, button_hover_color=_ACCENT_HOVER,
+                         # A quiet gray, not the primary accent -- the
+                         # dropdown arrow is routine chrome, not an action,
+                         # and rendering it in Start-button blue competed
+                         # for attention it hadn't earned (confirmed in a
+                         # screenshot review). The arrow glyph itself
+                         # renders dark regardless of this background.
+                         button_color=_CARD_BORDER, button_hover_color="#d5d5da",
                          dropdown_fg_color=_CARD, dropdown_text_color=_TEXT, text_color=_TEXT,
                          command=lambda _v: self._on_setting_change()).grid(
             row=2, column=3, sticky="w", padx=(8, 16), pady=(0, 14))
@@ -604,7 +635,12 @@ class ScreenWatchApp:
             ("change", "Changed", 90, "e"),
             ("image", "Image", 70, "center"),
         ):
-            self.log_tree.heading(col, text=text)
+            # anchor passed to both: ttk.Treeview.heading() defaults to
+            # centered text regardless of the column's own data anchor, so
+            # without this the "Changed" header sat centered while its
+            # right-aligned percentage values sat under "Image" instead --
+            # confirmed in a real screenshot, not assumed.
+            self.log_tree.heading(col, text=text, anchor=anchor)
             self.log_tree.column(col, width=width, anchor=anchor, stretch=(col == "change"))
         self.log_tree.tag_configure("even", background=_CARD)
         self.log_tree.tag_configure("odd", background="#fafafb")
@@ -1117,12 +1153,13 @@ class ScreenWatchApp:
             q: lambda: self._actions.put("quit"),
         })
         if ok:
-            # The control bar is visible from every tab, so it gets a
-            # shorter, distinct reminder rather than literally repeating
-            # this sentence (which read as clutter -- the same "Active --
-            # ..." message shown twice on screen at once).
-            self._set_hotkey_status(
-                f"Active — {pretty(t)} start/stop · {pretty(q)} quit", _OK,
+            # Doesn't repeat the combos here -- they're already the two
+            # badges directly above, in the Start/Stop and Quit rows. The
+            # control bar (visible from every tab, where those badges
+            # aren't on screen) is the one place that still spells them
+            # out, so the combos exist on screen exactly twice, not three
+            # times, and each occurrence earns its place.
+            self._set_hotkey_status("Active — hotkeys are working.", _OK,
                 bar_text=f"{pretty(t)} start/stop · {pretty(q)} quit")
         else:
             self._set_hotkey_status(
@@ -1152,8 +1189,18 @@ class ScreenWatchApp:
         dlg.configure(fg_color=_BG)
         dlg.transient(self.root)
         dlg.resizable(False, False)
-        ctk.CTkLabel(dlg, text="Press the key combination you want.\n\n(Esc to cancel)",
-                     font=("Sans", 12), text_color=_TEXT).pack(padx=28, pady=24)
+
+        # A real card, not bare text on the plain canvas -- this was the
+        # one surface in the app with no border, no card, and no visible
+        # button (Esc-only dismissal), breaking from the card language
+        # used everywhere else (confirmed in a screenshot review).
+        card = ctk.CTkFrame(dlg, corner_radius=14, fg_color=_CARD,
+                             border_width=1, border_color=_CARD_BORDER)
+        card.pack(padx=20, pady=20)
+        ctk.CTkLabel(card, text="Press the key combination you want.",
+                     font=("Sans", 13, "bold"), text_color=_TEXT).pack(padx=32, pady=(26, 4))
+        ctk.CTkLabel(card, text="Esc also cancels", font=("Sans", 11),
+                     text_color=_MUTED).pack(padx=32, pady=(0, 18))
         captured = {"combo": None}
 
         def on_key(event):
@@ -1167,6 +1214,8 @@ class ScreenWatchApp:
                 return
             captured["combo"] = combo
             dlg.destroy()
+
+        self._btn(card, "Cancel", dlg.destroy).pack(padx=32, pady=(0, 22))
 
         dlg.bind("<KeyPress>", on_key)
         dlg.grab_set()
