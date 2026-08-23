@@ -5,6 +5,7 @@ mss>=9.0.0
 numpy>=1.21
 pynput>=1.7.6
 Pillow>=9.0.0
+customtkinter>=5.2.0
 
 # ScreenWatch itself, installed from a source tarball of this branch.
 #

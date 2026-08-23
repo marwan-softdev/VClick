@@ -41,7 +41,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install .
           pip install pyinstaller
-          pyinstaller --onefile --console --noconfirm --name ScreenWatch-check --add-data "screenwatch\assets;screenwatch\assets" --hidden-import mss.windows --hidden-import pynput.mouse._win32 --hidden-import pynput.keyboard._win32 --distpath packaging\windows-exe\check-dist packaging\windows-exe\entrypoint.py
+          pyinstaller --onefile --console --noconfirm --name ScreenWatch-check --add-data "screenwatch\assets;screenwatch\assets" --collect-data customtkinter --hidden-import mss.windows --hidden-import pynput.mouse._win32 --hidden-import pynput.keyboard._win32 --distpath packaging\windows-exe\check-dist packaging\windows-exe\entrypoint.py
 
       - name: Smoke-test the bundled runtime
         shell: cmd
@@ -51,6 +51,8 @@ jobs:
           findstr /C:"tkinter      : available" check-output.txt
           if errorlevel 1 exit /b 1
           findstr /C:"mss (capture): available" check-output.txt
+          if errorlevel 1 exit /b 1
+          findstr /C:"customtkinter: available (theme assets found)" check-output.txt
           if errorlevel 1 exit /b 1
 
       - name: Build the real, windowed .exe

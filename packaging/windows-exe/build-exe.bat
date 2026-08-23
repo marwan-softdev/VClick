@@ -31,7 +31,11 @@ REM Paths made absolute (via %CD%, repo root after the cd /d above): with
 REM --specpath set, PyInstaller resolves relative --add-data/--icon paths
 REM against the spec directory instead of the working directory, which
 REM breaks them -- confirmed for real.
-pyinstaller --onefile --windowed --noconfirm --name ScreenWatch --icon "%CD%\screenwatch\assets\icon.ico" --add-data "%CD%\screenwatch\assets;screenwatch\assets" --hidden-import mss.windows --hidden-import pynput.mouse._win32 --hidden-import pynput.keyboard._win32 --distpath "%CD%\packaging\windows-exe\dist" --workpath "%CD%\packaging\windows-exe\build" --specpath "%CD%\packaging\windows-exe" "%CD%\packaging\windows-exe\entrypoint.py"
+REM --collect-data customtkinter: CustomTkinter ships its theme JSON files
+REM and font files (assets/themes/*.json, assets/fonts/*) as package data,
+REM which PyInstaller's static import analysis doesn't pick up on its own --
+REM without this the built .exe launches into a theme/font lookup error.
+pyinstaller --onefile --windowed --noconfirm --name ScreenWatch --icon "%CD%\screenwatch\assets\icon.ico" --add-data "%CD%\screenwatch\assets;screenwatch\assets" --collect-data customtkinter --hidden-import mss.windows --hidden-import pynput.mouse._win32 --hidden-import pynput.keyboard._win32 --distpath "%CD%\packaging\windows-exe\dist" --workpath "%CD%\packaging\windows-exe\build" --specpath "%CD%\packaging\windows-exe" "%CD%\packaging\windows-exe\entrypoint.py"
 if errorlevel 1 (
     echo PyInstaller build failed.
     exit /b 1

@@ -69,6 +69,18 @@ def _check() -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"mss (capture): MISSING ({exc})")
 
+    try:
+        import customtkinter as ctk
+
+        # Reads the theme's JSON off disk relative to the installed package
+        # -- doesn't need a display, but does prove PyInstaller actually
+        # bundled CustomTkinter's assets/themes/*.json (a real past failure
+        # mode: the import succeeds but this raises FileNotFoundError).
+        ctk.set_default_color_theme("green")
+        print("customtkinter: available (theme assets found)")
+    except Exception as exc:  # noqa: BLE001
+        print(f"customtkinter: MISSING ({exc})")
+
     from .clicker import Clicker
     from .sound import Beeper
 

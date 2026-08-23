@@ -54,8 +54,8 @@ runs natively on **both Linux and Windows**.
   with **"Add python.exe to PATH"** ticked during setup. That installer
   already bundles Tkinter — nothing extra to install.
 
-Both platforms: `mss`, `numpy`, `pynput`, `Pillow` (installed automatically
-by the steps below).
+Both platforms: `mss`, `numpy`, `pynput`, `Pillow`, `customtkinter` (installed
+automatically by the steps below).
 
 ---
 
@@ -324,7 +324,7 @@ screenwatch/
   paths.py           locates the bundled icon regardless of how it was installed
   history.py         bounded per-detection history behind the Why/Log tab
   region_selector.py fullscreen overlays for picking region & point
-  gui.py             the Tkinter/ttk window
+  gui.py             the CustomTkinter window
   assets/            app icon (icon.png, icon.ico), packaged with the app
 assets/
   screenwatch.desktop  Linux launcher template, filled in by install.sh
