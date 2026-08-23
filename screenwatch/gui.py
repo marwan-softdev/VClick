@@ -36,7 +36,9 @@ _CARD_BORDER = "#e4e4e9"   # hairline card border
 _DIVIDER = "#ececef"       # subtle in-card divider (header vs. content)
 _TEXT = "#1c1c1e"          # primary text
 _MUTED = "#8a8a8e"         # secondary/muted text
-_MUTED2 = "#c2c2c7"        # faint text / hints
+_MUTED2 = "#c2c2c7"        # faint borders only (e.g. unchecked checkbox/radio
+                           # outlines) -- too low-contrast for text on white
+                           # (~1.8:1); use _MUTED for anything meant to be read
 _ACCENT = "#0a84ff"        # primary accent -- the Start button, badges, links
 _ACCENT_HOVER = "#0071e3"
 _ACCENT_TINT = "#e8f2ff"   # light accent fill for "value is set" badges
@@ -144,6 +146,7 @@ class ScreenWatchApp:
         self._row_seq = 0           # monotonic, unique per window (see _log_detection)
         self._selected = None       # the Detection currently shown
         self._preview_photo = None  # keep a ref so Tk doesn't GC the image
+        self._slider_labels = {}    # slider label text -> its value badge
 
         root.title(f"{__app_name__} — auto-click on change")
         root.minsize(560, 760)
@@ -263,7 +266,7 @@ class ScreenWatchApp:
         status_row = ctk.CTkFrame(card, fg_color="transparent")
         status_row.pack(fill="x", padx=16)
         self.status_dot = ctk.CTkFrame(status_row, width=8, height=8, corner_radius=4,
-                                        fg_color=_MUTED2)
+                                        fg_color=_MUTED)
         self.status_dot.pack(side="left", padx=(0, 8))
         self.status_dot.pack_propagate(False)
         self.status_lbl = ctk.CTkLabel(status_row, text="Idle — select targets to begin.",
@@ -272,7 +275,7 @@ class ScreenWatchApp:
 
         self.stats_lbl = ctk.CTkLabel(card, text="", text_color=_MUTED, anchor="w")
         self.stats_lbl.pack(fill="x", padx=16, pady=(4, 0))
-        self.hotkey_lbl = ctk.CTkLabel(card, text="", text_color=_MUTED2,
+        self.hotkey_lbl = ctk.CTkLabel(card, text="", text_color=_MUTED,
                                         font=("Sans", 10), anchor="w")
         self.hotkey_lbl.pack(fill="x", padx=16, pady=(4, 10))
 
@@ -281,13 +284,14 @@ class ScreenWatchApp:
         filled 'primary' action per view (Raycast/CleanShot convention --
         one obvious thing to press) and neutral outlined 'secondary'
         actions for everything else, so the important control doesn't get
-        lost among a row of equally-weighted buttons."""
+        lost among a row of equally-weighted buttons. (The Start/Stop
+        button is the one exception that needs a third, red "danger" look
+        while running -- handled by _update_running_ui reconfiguring the
+        same button directly, since it must restyle an existing widget
+        rather than construct a new one.)"""
         ctk = self.ctk
         if kind == "primary":
             style = dict(fg_color=_ACCENT, hover_color=_ACCENT_HOVER, text_color="white",
-                         corner_radius=10, border_width=0)
-        elif kind == "danger":
-            style = dict(fg_color=_ERROR, hover_color=_ERROR_HOVER, text_color="white",
                          corner_radius=10, border_width=0)
         else:
             style = dict(fg_color="transparent", hover_color=_BG, text_color=_TEXT,
@@ -369,7 +373,7 @@ class ScreenWatchApp:
             row=9, column=0, sticky="nw", padx=(16, 0), pady=(0, 12))
         self.compare_var = self.tk.StringVar()
         cmp_frame = ctk.CTkFrame(detect, fg_color="transparent")
-        cmp_frame.grid(row=9, column=1, columnspan=2, sticky="w", pady=(0, 12))
+        cmp_frame.grid(row=9, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 12))
         ctk.CTkRadioButton(cmp_frame, text="Previous frame (any change)", value="previous",
                             variable=self.compare_var, command=self._on_setting_change,
                             fg_color=_ACCENT, hover_color=_ACCENT_HOVER,
@@ -431,7 +435,7 @@ class ScreenWatchApp:
             row=3, column=0, sticky="w", padx=(16, 0), pady=(0, 18))
         self.maxclicks_var = self.tk.IntVar()
         self._stepper(timing, 3, 1, self.maxclicks_var, step=1, lo=0, hi=1_000_000, integer=True)
-        ctk.CTkLabel(timing, text="0 = unlimited", text_color=_MUTED2, anchor="w").grid(
+        ctk.CTkLabel(timing, text="0 = unlimited", text_color=_MUTED, anchor="w").grid(
             row=3, column=2, columnspan=2, sticky="w", padx=(16, 0), pady=(0, 18))
 
     def _build_tab_hotkeys(self, tabview) -> None:
@@ -486,7 +490,7 @@ class ScreenWatchApp:
             tester,
             text="Global hotkeys work on Windows and Linux X11. On Linux Wayland the\n"
                  "system usually blocks them — use the Start button instead.",
-            text_color=_MUTED2, font=("Sans", 10), justify="left", anchor="w",
+            text_color=_MUTED, font=("Sans", 10), justify="left", anchor="w",
         ).grid(row=3, column=0, columnspan=2, sticky="w", padx=(16, 16), pady=(0, 16))
 
     def _build_tab_why(self, tabview) -> None:
@@ -594,9 +598,9 @@ class ScreenWatchApp:
                       button_hover_color=_ACCENT_HOVER, **extra).grid(
             row=row, column=1, sticky="ew", padx=10)
         if hint:
-            ctk.CTkLabel(parent, text=hint, text_color=_MUTED2, font=("Sans", 10), anchor="w").grid(
+            ctk.CTkLabel(parent, text=hint, text_color=_MUTED, font=("Sans", 10), anchor="w").grid(
                 row=row + 1, column=1, columnspan=2, sticky="w", pady=(0, 10))
-        setattr(self, f"_vallbl_{label}", value_lbl)
+        self._slider_labels[label] = value_lbl
 
     def _stepper(self, parent, row, col, var, step, lo, hi, integer=False):
         """A CTkEntry with +/- buttons — CustomTkinter has no Spinbox."""
@@ -656,7 +660,7 @@ class ScreenWatchApp:
             ("Check rate (fps)", self.fps_var, "{:.1f}"),
             ("Noise filter", self.threshold_var, "{:.0f}"),
         ):
-            lbl = getattr(self, f"_vallbl_{label}", None)
+            lbl = self._slider_labels.get(label)
             if lbl is not None:
                 lbl.configure(text=fmt.format(var.get()))
 
@@ -968,7 +972,7 @@ class ScreenWatchApp:
         self.view_btn.configure(state="disabled")
         self.save_btn.configure(state="disabled")
 
-    def _set_status(self, text: str, color: str = _MUTED2) -> None:
+    def _set_status(self, text: str, color: str = _MUTED) -> None:
         self.status_dot.configure(fg_color=color)
         self.status_lbl.configure(text=text, text_color=_status_text_color(color))
 
