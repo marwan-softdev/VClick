@@ -13,60 +13,85 @@ import queue
 from typing import Optional
 
 from . import __app_name__, __version__
-from .config import CLICK_BUTTONS, CLICK_TYPES, Config
+from .config import (CLICK_BUTTONS, CLICK_TYPES, THEME_MODES, Config,
+                     default_config_path)
 from .history import DetectionHistory
 from .hotkeys import HotkeyManager, is_valid, parse_hotkey, pretty
 from .monitor import Monitor, MonitorEvent
 from .sound import Beeper
 
 PAD = 14
+
+# Config stores lowercase theme keys; the picker shows capitalised labels.
+_THEME_LABELS = {"system": "System", "light": "Light", "dark": "Dark"}
+_THEME_MODE_BY_LABEL = {v: k for k, v in _THEME_LABELS.items()}
 CARD_GAP = 8
 
 # ---------------------------------------------------------------------------
-# Design tokens: a light theme inspired by Raycast's and CleanShot X's
-# preference panes -- a neutral canvas, white bordered "cards" that group
-# related fields (so it's obvious at a glance where one setting group ends
-# and the next begins), one accent color reserved for the single primary
-# action and for "this value is set" badges, and everything else rendered
-# in quiet neutrals so the accent still stands out where it's used.
+# Design tokens: inspired by Raycast's and CleanShot X's preference panes --
+# a neutral canvas, bordered "cards" that group related fields (so it's
+# obvious at a glance where one setting group ends and the next begins), one
+# accent color reserved for the single primary action and for "this value is
+# set" badges, and everything else in quiet neutrals so the accent still
+# stands out where it's used.
+#
+# Every token is a ``(light, dark)`` pair, which is CustomTkinter's own
+# convention: hand a widget a tuple and it picks the right half for the
+# current appearance mode, then re-picks automatically when the mode changes.
+# That means the whole app themes itself from this block alone -- widget
+# construction below passes these tokens and never needs to know which mode
+# is active. The two exceptions are the plain-ttk widgets in the Why/Log tab
+# (ttk has no idea what a CTk tuple is) -- see _apply_ttk_theme, which
+# resolves tokens by hand for those.
+#
+# Dark values are a deliberate palette, not a mechanical inversion, and every
+# text/background pair below was contrast-checked against WCAG AA (4.5:1 for
+# body text, 3:1 for large/bold) on the surface it actually sits on.
 # ---------------------------------------------------------------------------
-_BG = "#f2f2f5"            # window canvas
-_CARD = "#ffffff"          # card surface
-_CARD_BORDER = "#e4e4e9"   # hairline card border
-_DIVIDER = "#ececef"       # subtle in-card divider (header vs. content)
-_TEXT = "#1c1c1e"          # primary text
-# Muted text: darkened from an earlier #8a8a8e (~3.4:1 on white -- below the
-# WCAG AA 4.5:1 minimum for normal text) to a value that actually clears it.
-_MUTED = "#6e6e73"         # secondary/muted text, ~5.1:1 on white
-_MUTED2 = "#c2c2c7"        # faint borders only (e.g. unchecked checkbox/radio
-                           # outlines) -- too low-contrast for text on white
-                           # (~1.8:1); use _MUTED for anything meant to be read
-_ACCENT = "#0a84ff"        # primary accent -- fills only (Start button,
-                           # slider/progress fill, checkbox/radio fill): as
-                           # *text* on white or on _ACCENT_TINT it only hits
-                           # ~3.2-3.7:1, so badge/link text uses _ACCENT_TEXT
-                           # instead, a darker shade of the same blue.
-_ACCENT_HOVER = "#0071e3"
-_ACCENT_TEXT = "#0a5fc0"   # accent as *text* -- ~5.5:1 on _ACCENT_TINT, ~6.2:1
-                           # on white, so badges/links actually clear AA
-_ACCENT_TINT = "#e8f2ff"   # light accent fill for "value is set" badges
-_TRACK = "#e4e4e9"         # slider / progress-bar track
+#                        light        dark
+_BG           = ("#f2f2f5", "#141416")  # window canvas
+_CARD         = ("#ffffff", "#1e1e21")  # card surface, raised off the canvas
+_CARD_BORDER  = ("#e4e4e9", "#333338")  # hairline card border
+_CARD_HOVER   = ("#d5d5da", "#3d3d44")  # hover for bordered/secondary controls
+_SUBTLE       = ("#fafafb", "#26262b")  # faintly-tinted rows (table headers,
+                                        # zebra striping) -- barely off _CARD
+_DIVIDER      = ("#ececef", "#2a2a2e")  # subtle in-card divider
+_TEXT         = ("#1c1c1e", "#f2f2f5")  # primary text (17:1 / 14.9:1)
+# Muted text: the light half was darkened from an earlier #8a8a8e (~3.4:1 on
+# white, under the AA 4.5:1 floor) to one that actually clears it.
+_MUTED        = ("#6e6e73", "#9a9aa2")  # secondary text (5.1:1 / 5.95:1)
+_MUTED2       = ("#c2c2c7", "#4a4a52")  # faint borders ONLY (unchecked
+                                        # checkbox/radio outlines) -- far too
+                                        # low-contrast for text either side
+_ACCENT       = ("#0a84ff", "#1f86e8")  # accent FILLS only (Start button,
+                                        # slider/progress fill, checkbox
+                                        # fill). White sits on this, so the
+                                        # dark half is deliberately not the
+                                        # brighter #3b9dff: white on that is
+                                        # 2.82:1, under even the large-text
+                                        # 3:1 bar. #1f86e8 gives 3.73:1.
+_ACCENT_HOVER = ("#0071e3", "#3b9dff")
+_ACCENT_TEXT  = ("#0a5fc0", "#7ab8ff")  # accent as TEXT, on _ACCENT_TINT
+                                        # (5.5:1 / 6.5:1) -- badges and the
+                                        # slider value fields
+_ACCENT_TINT  = ("#e8f2ff", "#16304d")  # tinted fill behind accent text
+_TRACK        = ("#e4e4e9", "#333338")  # slider / progress-bar track
 
-# Status colors. The vivid tones below are used for small dot indicators
-# (fine at any contrast); *_TEXT variants are darker so status text stays
-# readable on a white card instead of the washed-out look pastel-on-white
-# status text gets.
-_OK, _OK_TEXT = "#12b76a", "#067647"
-_WARN, _WARN_TEXT = "#f79009", "#b54708"
-_ERROR, _ERROR_TEXT = "#f04438", "#b42318"
-_ERROR_HOVER = "#d92d20"
+# Status colors. The vivid *dot* tones are used for small indicator dots
+# (fine at any contrast, since they carry no text); the *_TEXT variants are
+# tuned per mode so status wording stays readable on a card either side.
+_OK,    _OK_TEXT    = ("#12b76a", "#3ddc97"), ("#067647", "#4ade80")
+_WARN,  _WARN_TEXT  = ("#f79009", "#fdb022"), ("#b54708", "#fbbf24")
+_ERROR, _ERROR_TEXT = ("#f04438", "#f97066"), ("#b42318", "#f87171")
+_ERROR_HOVER = ("#d92d20", "#e5544a")
 
 _STATUS_TEXT_COLORS = {_OK: _OK_TEXT, _WARN: _WARN_TEXT, _ERROR: _ERROR_TEXT}
 
 
-def _status_text_color(color: str) -> str:
-    """Map a status dot color to a readable-on-white text color; anything
-    not in the map (e.g. a plain "gray50") passes through unchanged."""
+def _status_text_color(color):
+    """Map a status dot color to its readable-on-a-card text counterpart;
+    anything not in the map passes through unchanged. Tokens are tuples,
+    which are hashable, so they work as dict keys directly."""
     return _STATUS_TEXT_COLORS.get(color, color)
 
 
@@ -155,6 +180,7 @@ class ScreenWatchApp:
         self._selected = None       # the Detection currently shown
         self._preview_photo = None  # keep a ref so Tk doesn't GC the image
         self._slider_labels = {}    # slider label text -> its value entry's StringVar
+        self._autosave_job = None   # pending debounced save (see _schedule_autosave)
 
         root.title(f"{__app_name__} — auto-click on change")
         # Height in particular is much lower than the window's natural
@@ -166,7 +192,6 @@ class ScreenWatchApp:
         root.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self._build_style()
-        self._build_menu()
         self._build_widgets()
         self._sync_widgets_from_config()
 
@@ -174,47 +199,72 @@ class ScreenWatchApp:
         self.root.after(100, self._poll)
 
     # ------------------------------------------------------------------ UI
-    def _build_style(self) -> None:
-        ctk = self.ctk
-        ctk.set_appearance_mode("light")
-        ctk.set_default_color_theme("blue")
-        self.root.configure(fg_color=_BG)
+    def _mode_color(self, token):
+        """Resolve a ``(light, dark)`` design token to the single hex string
+        that plain-Tk/ttk widgets need. CustomTkinter widgets take the tuple
+        directly and pick a half themselves; ttk has no such concept, so
+        anything ttk-styled has to be resolved here and re-resolved whenever
+        the appearance mode changes (see :meth:`_apply_ttk_theme`)."""
+        return token[1] if self.ctk.get_appearance_mode() == "Dark" else token[0]
 
-        # ttk.Treeview/PanedWindow/Scrollbar have no CustomTkinter equivalent
-        # (it doesn't ship a table/tree widget), so the Why/Log tab keeps
-        # them as plain ttk -- restyled by hand to match the app's light
-        # card palette so they blend in instead of looking like a stray
-        # system-themed widget dropped into an otherwise custom window.
+    def _build_style(self) -> None:
+        self.ctk.set_default_color_theme("blue")
+        # A tuple, so the canvas follows an appearance-mode change by itself.
+        self.root.configure(fg_color=_BG)
+        self.apply_theme(self.config.theme)
+
+    def _apply_ttk_theme(self) -> None:
+        """Restyle the plain-ttk widgets for the current appearance mode.
+
+        ttk.Treeview/PanedWindow have no CustomTkinter equivalent (it ships
+        no table/tree widget), so the Why/Log tab keeps them as real ttk
+        widgets, hand-styled to match the surrounding cards instead of
+        looking like a stray system-themed widget dropped into an otherwise
+        custom window. Unlike every CTk widget, they do NOT follow an
+        appearance-mode change on their own, so this runs again on every
+        theme switch rather than once at startup.
+        """
+        c = self._mode_color
         style = self.ttk.Style()
         for theme in ("clam", "alt", "default"):
             if theme in style.theme_names():
                 style.theme_use(theme)
                 break
-        style.configure("Treeview", background=_CARD, fieldbackground=_CARD,
-                         foreground=_TEXT, borderwidth=0, rowheight=26)
-        style.configure("Treeview.Heading", background="#fafafb", foreground=_MUTED,
+        style.configure("Treeview", background=c(_CARD), fieldbackground=c(_CARD),
+                         foreground=c(_TEXT), borderwidth=0, rowheight=26)
+        style.configure("Treeview.Heading", background=c(_SUBTLE), foreground=c(_MUTED),
                          borderwidth=0, relief="flat", font=("Sans", 10, "bold"))
-        style.map("Treeview", background=[("selected", _ACCENT_TINT)],
-                   foreground=[("selected", _TEXT)])
-        style.configure("TPanedwindow", background=_BG)
+        style.map("Treeview", background=[("selected", c(_ACCENT_TINT))],
+                   foreground=[("selected", c(_TEXT))])
+        style.configure("TPanedwindow", background=c(_BG))
+        # Zebra striping lives on the tree's own tags, not the ttk style, so
+        # it needs re-applying here too. Guarded because _apply_ttk_theme
+        # runs once from _build_style before any tab exists.
+        tree = getattr(self, "log_tree", None)
+        if tree is not None:
+            tree.tag_configure("even", background=c(_CARD))
+            tree.tag_configure("odd", background=c(_SUBTLE))
 
-    def _build_menu(self) -> None:
-        # Native OS menu bar -- CustomTkinter doesn't theme tk.Menu (no
-        # custom-rendered equivalent exists), so this is the one part of the
-        # window that keeps the platform's native look. Functionally
-        # unaffected either way.
-        menubar = self.tk.Menu(self.root)
-        filemenu = self.tk.Menu(menubar, tearoff=0)
-        filemenu.add_command(label="Save settings", command=self.save_settings)
-        filemenu.add_command(label="Reload settings", command=self.reload_settings)
-        filemenu.add_separator()
-        filemenu.add_command(label="Quit", command=self.on_close)
-        menubar.add_cascade(label="File", menu=filemenu)
+    def apply_theme(self, mode: str) -> None:
+        """Switch the whole window between light/dark/system, live.
 
-        helpmenu = self.tk.Menu(menubar, tearoff=0)
-        helpmenu.add_command(label="About / Help", command=self.show_about)
-        menubar.add_cascade(label="Help", menu=helpmenu)
-        self.root.config(menu=menubar)
+        CustomTkinter repaints every one of its own widgets by itself when
+        the appearance mode changes (each was handed a ``(light, dark)``
+        token, so it just re-picks a half) -- no rebuild, no restart. Only
+        the ttk widgets need a manual nudge afterwards.
+        """
+        self.ctk.set_appearance_mode(mode)
+        self._apply_ttk_theme()
+
+    # There is deliberately no menu bar. It held only File (Save settings /
+    # Reload settings / Quit) and Help (About), and every one of those is now
+    # either automatic or reachable in the window itself: settings save
+    # themselves (see _schedule_autosave), "reload" is better expressed as
+    # the Settings tab's explicit "Reset to defaults", About moved into the
+    # Settings tab, and Quit was always available from the window's own close
+    # button and the quit hotkey. A native tk.Menu was also the one surface
+    # CustomTkinter can't theme, so dropping it removes the last widget that
+    # couldn't follow the light/dark setting.
 
     def _build_widgets(self) -> None:
         ctk = self.ctk
@@ -239,7 +289,7 @@ class ScreenWatchApp:
             segmented_button_selected_color=_CARD,
             segmented_button_selected_hover_color=_CARD,
             segmented_button_unselected_color=_CARD_BORDER,
-            segmented_button_unselected_hover_color="#dadade",
+            segmented_button_unselected_hover_color=_CARD_HOVER,
             text_color=_TEXT, text_color_disabled=_MUTED,
             # Left-aligned (CTkTabview centers by default) so the tab pill
             # shares the cards' left margin below it instead of floating
@@ -253,6 +303,7 @@ class ScreenWatchApp:
         self._build_tab_clicking(tabview)
         self._build_tab_hotkeys(tabview)
         self._build_tab_why(tabview)
+        self._build_tab_settings(tabview)
 
         # Locks the window to a fixed initial size so switching tabs never
         # resizes it -- confirmed for real that it otherwise does: with no
@@ -397,7 +448,7 @@ class ScreenWatchApp:
         tab = tabview.add(name)
         scroll = ctk.CTkScrollableFrame(
             tab, fg_color="transparent",
-            scrollbar_button_color=_CARD_BORDER, scrollbar_button_hover_color="#d5d5da",
+            scrollbar_button_color=_CARD_BORDER, scrollbar_button_hover_color=_CARD_HOVER,
         )
         scroll.pack(fill="both", expand=True)
         return scroll
@@ -474,7 +525,7 @@ class ScreenWatchApp:
                          # for attention it hadn't earned (confirmed in a
                          # screenshot review). The arrow glyph itself
                          # renders dark regardless of this background.
-                         button_color=_CARD_BORDER, button_hover_color="#d5d5da",
+                         button_color=_CARD_BORDER, button_hover_color=_CARD_HOVER,
                          dropdown_fg_color=_CARD, dropdown_text_color=_TEXT, text_color=_TEXT,
                          command=lambda _v: self._on_setting_change()).grid(
             row=2, column=1, sticky="w", padx=8, pady=(0, 14))
@@ -489,7 +540,7 @@ class ScreenWatchApp:
                          # for attention it hadn't earned (confirmed in a
                          # screenshot review). The arrow glyph itself
                          # renders dark regardless of this background.
-                         button_color=_CARD_BORDER, button_hover_color="#d5d5da",
+                         button_color=_CARD_BORDER, button_hover_color=_CARD_HOVER,
                          dropdown_fg_color=_CARD, dropdown_text_color=_TEXT, text_color=_TEXT,
                          command=lambda _v: self._on_setting_change()).grid(
             row=2, column=3, sticky="w", padx=(8, 16), pady=(0, 14))
@@ -652,8 +703,10 @@ class ScreenWatchApp:
             # confirmed in a real screenshot, not assumed.
             self.log_tree.heading(col, text=text, anchor=anchor)
             self.log_tree.column(col, width=width, anchor=anchor, stretch=(col == "change"))
-        self.log_tree.tag_configure("even", background=_CARD)
-        self.log_tree.tag_configure("odd", background="#fafafb")
+        # Zebra-stripe colors are applied by _apply_ttk_theme (which also
+        # re-applies them on every theme switch), called below now that
+        # self.log_tree exists for it to find.
+        self._apply_ttk_theme()
         # A CTkScrollbar, not ttk.Scrollbar -- ttk's is the platform's own
         # native widget (visible up/down arrow buttons, a chunky 3D-look
         # thumb on Windows), which looked out of place next to everything
@@ -664,7 +717,7 @@ class ScreenWatchApp:
         # something specific to ttk's own scrollbar.
         scroll = ctk.CTkScrollbar(logframe, orientation="vertical", command=self.log_tree.yview,
                                    fg_color="transparent", button_color=_CARD_BORDER,
-                                   button_hover_color="#d5d5da")
+                                   button_hover_color=_CARD_HOVER)
         self.log_tree.configure(yscrollcommand=scroll.set)
         scroll.pack(side="right", fill="y")
         self.log_tree.pack(side="left", fill="both", expand=True)
@@ -769,6 +822,118 @@ class ScreenWatchApp:
 
         tabview.configure(command=_on_tab_changed)
 
+    def _build_tab_settings(self, tabview) -> None:
+        ctk = self.ctk
+        tab = self._scrollable_tab(tabview, "Settings")
+
+        # --- Appearance -----------------------------------------------------
+        appearance = self._section(tab, "Appearance")
+        appearance.pack(fill="x", pady=(0, CARD_GAP))
+        ctk.CTkLabel(appearance, text="Theme", text_color=_MUTED, anchor="w").grid(
+            row=2, column=0, sticky="w", padx=(16, 0), pady=(0, 6))
+        self.theme_btn = ctk.CTkSegmentedButton(
+            appearance, values=[_THEME_LABELS[m] for m in THEME_MODES],
+            command=self._on_theme_change,
+            fg_color=_CARD_BORDER, selected_color=_ACCENT,
+            selected_hover_color=_ACCENT_HOVER, unselected_color=_CARD_BORDER,
+            unselected_hover_color=_CARD_HOVER, text_color=_TEXT,
+        )
+        self.theme_btn.grid(row=2, column=1, columnspan=2, sticky="e",
+                             padx=(8, 16), pady=(0, 6))
+        ctk.CTkLabel(
+            appearance,
+            text="“System” follows your OS light/dark setting where the desktop\n"
+                 "reports one, and falls back to light where it doesn't.",
+            text_color=_MUTED, font=("Sans", 10), justify="left", anchor="w",
+        ).grid(row=3, column=0, columnspan=3, sticky="w", padx=16, pady=(0, 16))
+
+        # --- General --------------------------------------------------------
+        general = self._section(tab, "General")
+        general.pack(fill="x", pady=(0, CARD_GAP))
+        ctk.CTkLabel(general, text="Detections to keep", text_color=_MUTED, anchor="w").grid(
+            row=2, column=0, sticky="w", padx=(16, 0), pady=(0, 4))
+        self.loghistory_var = self.tk.IntVar()
+        self._stepper(general, 2, 1, self.loghistory_var, step=5, lo=5, hi=200, integer=True)
+        ctk.CTkLabel(
+            general,
+            text="How many past detections stay browsable in the Why / Log tab.\n"
+                 "Each keeps its image, so a lower number uses less memory.",
+            text_color=_MUTED, font=("Sans", 10), justify="left", anchor="w",
+        ).grid(row=3, column=0, columnspan=3, sticky="w", padx=16, pady=(0, 12))
+
+        ctk.CTkFrame(general, height=1, fg_color=_DIVIDER).grid(
+            row=4, column=0, columnspan=3, sticky="ew", padx=16, pady=(0, 12))
+        ctk.CTkLabel(general, text="Reset everything", text_color=_MUTED, anchor="w").grid(
+            row=5, column=0, sticky="w", padx=(16, 0), pady=(0, 16))
+        self._btn(general, "Reset to defaults…", self.reset_settings, width=150).grid(
+            row=5, column=2, sticky="e", padx=(0, 16), pady=(0, 16))
+
+        # --- About ----------------------------------------------------------
+        # Folded in from what used to be a native "Help > About" messagebox:
+        # a modal system dialog was the one surface that could never match
+        # the app's own styling, and the tips below are more useful sitting
+        # in the window than hidden behind a menu.
+        about = self._section(tab, f"About {__app_name__}")
+        about.pack(fill="x", pady=(0, CARD_GAP))
+        ctk.CTkLabel(about, text=f"Version {__version__}", text_color=_TEXT,
+                     font=("Sans", 12, "bold"), anchor="w").grid(
+            row=2, column=0, columnspan=3, sticky="w", padx=16, pady=(0, 8))
+        ctk.CTkLabel(
+            about,
+            text="Watches a chosen screen area and clicks a chosen point the\n"
+                 "moment that area changes visually.",
+            text_color=_MUTED, justify="left", anchor="w",
+        ).grid(row=3, column=0, columnspan=3, sticky="w", padx=16, pady=(0, 12))
+        # Only tips that aren't already stated inline next to the control
+        # they describe -- the old About box also explained Sensitivity and
+        # Check rate, which the Detection tab's own hints under each slider
+        # now cover, so repeating them here was pure duplication.
+        ctk.CTkLabel(
+            about,
+            text="• Cooldown prevents rapid repeat clicks.\n"
+                 "• “Previous frame” reacts to any motion; “Start frame” reacts to a\n"
+                 "   deviation from how the area looked when you pressed Start.\n"
+                 "• The Why / Log tab shows exactly which pixels changed.",
+            text_color=_MUTED, font=("Sans", 11), justify="left", anchor="w",
+        ).grid(row=4, column=0, columnspan=3, sticky="w", padx=16, pady=(0, 12))
+        ctk.CTkLabel(about, text="Settings are saved automatically to:",
+                     text_color=_MUTED, font=("Sans", 10), anchor="w").grid(
+            row=5, column=0, columnspan=3, sticky="w", padx=16, pady=(0, 2))
+        path_lbl = ctk.CTkLabel(about, text=default_config_path(), text_color=_MUTED,
+                                 font=("Sans", 10), anchor="w", wraplength=470,
+                                 justify="left")
+        path_lbl.grid(row=6, column=0, columnspan=3, sticky="w", padx=16, pady=(0, 16))
+
+    def _on_theme_change(self, label: str) -> None:
+        """Apply a theme picked in Settings, immediately and permanently."""
+        mode = _THEME_MODE_BY_LABEL.get(label, "system")
+        self.config.theme = mode
+        self.apply_theme(mode)
+        self._schedule_autosave()
+
+    def reset_settings(self) -> None:
+        """Restore every setting to its default, after confirming."""
+        from tkinter import messagebox
+
+        if not messagebox.askyesno(
+            "Reset settings",
+            "Reset all settings back to their defaults?\n\n"
+            "This clears the watch region, click point, hotkeys and every\n"
+            "preference. It can't be undone.",
+            parent=self.root,
+        ):
+            return
+        self.monitor.stop()
+        self.config = Config()
+        self.monitor = Monitor(self.config, on_event=self._events.put)
+        self._history.set_capacity(self.config.log_history)
+        self._sync_widgets_from_config()
+        self.apply_theme(self.config.theme)
+        self._apply_hotkeys()
+        self._update_running_ui()
+        self._schedule_autosave()
+        self._set_status("Settings reset to defaults.", _OK)
+
     def _slider(self, parent, row, label, var, lo, hi, hint="", fmt="{:.0f}",
                 steps=None, integer=False):
         ctk = self.ctk
@@ -871,6 +1036,8 @@ class ScreenWatchApp:
         self.sound_var.set(c.play_sound)
         self.hotkey_enabled_var.set(c.hotkeys_enabled)
         self.preview_var.set(c.show_detection_preview)
+        self.loghistory_var.set(c.log_history)
+        self.theme_btn.set(_THEME_LABELS.get(c.theme, "System"))
         self._refresh_target_labels()
         self._refresh_hotkey_labels()
         for label, var, fmt in (
@@ -899,11 +1066,42 @@ class ScreenWatchApp:
         c.play_sound = bool(self.sound_var.get())
         c.hotkeys_enabled = bool(self.hotkey_enabled_var.get())
         c.show_detection_preview = bool(self.preview_var.get())
+        try:
+            c.log_history = int(self.loghistory_var.get())
+        except (ValueError, self.tk.TclError):
+            pass  # mid-edit garbage in the entry; keep the last good value
         c.clamp()
+        self._history.set_capacity(c.log_history)
 
     def _on_setting_change(self, *_args) -> None:
         # Live-apply while running; the Monitor reads the same Config object.
         self._pull_config_from_widgets()
+        self._schedule_autosave()
+
+    def _schedule_autosave(self, delay_ms: int = 800) -> None:
+        """Persist settings shortly after the last change.
+
+        There's no explicit "Save settings" action any more (the File menu
+        it lived on is gone), so settings have to persist on their own. This
+        is debounced rather than saving on every change because a single
+        slider drag fires a change per pixel of travel -- that would be
+        hundreds of disk writes for one gesture. Any pending save is
+        cancelled and re-scheduled, so the write happens once things settle.
+        """
+        if self._autosave_job is not None:
+            try:
+                self.root.after_cancel(self._autosave_job)
+            except Exception:  # noqa: BLE001 - a stale id must not break saving
+                pass
+        self._autosave_job = self.root.after(delay_ms, self._autosave_now)
+
+    def _autosave_now(self) -> None:
+        self._autosave_job = None
+        try:
+            self.config.save()
+        except OSError as exc:
+            # Never interrupt the user mid-task for this; on_close retries.
+            self._set_status(f"Could not save settings: {exc}", _WARN)
 
     def _refresh_target_labels(self) -> None:
         c = self.config
@@ -1314,51 +1512,21 @@ class ScreenWatchApp:
             self._refresh_hotkey_labels()
             self._apply_hotkeys()
 
-    # ------------------------------------------------------------- menu ops
-    def save_settings(self) -> None:
-        self._pull_config_from_widgets()
-        try:
-            path = self.config.save()
-            self._set_status(f"Settings saved to {path}", _OK)
-        except OSError as exc:
-            self._set_status(f"Could not save settings: {exc}", _ERROR)
-
-    def reload_settings(self) -> None:
-        self.monitor.stop()
-        self.config = Config.load()
-        self.monitor = Monitor(self.config, on_event=self._events.put)
-        self._history.set_capacity(self.config.log_history)
-        self._sync_widgets_from_config()
-        self._apply_hotkeys()
-        self._update_running_ui()
-        self._set_status("Settings reloaded.", _OK)
-
-    def show_about(self) -> None:
-        # Native OS message box -- CustomTkinter has no themed equivalent
-        # (nor does it need one; a system dialog is the expected UX here).
-        from tkinter import messagebox
-
-        messagebox.showinfo(
-            f"About {__app_name__}",
-            f"{__app_name__} {__version__}\n\n"
-            "Watches a chosen screen area and clicks a chosen point the moment\n"
-            "the area changes visually.\n\n"
-            "Tips\n"
-            "• Sensitivity high = reacts to tiny changes; low = only big ones.\n"
-            "• Check rate low keeps CPU usage minimal for long sessions.\n"
-            "• Cooldown prevents rapid repeat clicks.\n"
-            "• 'Previous frame' reacts to any motion; 'Start frame' reacts to a\n"
-            "  deviation from how the area looked when you pressed Start.\n"
-            "• The 'Why / Log' tab shows exactly which pixels changed.\n\n"
-            "Hotkeys are customizable in the Hotkeys tab.",
-        )
-
     # --------------------------------------------------------------- close
     def on_close(self) -> None:
         try:
             self.monitor.stop()
         finally:
             self.hotkeys.stop()
+            # Drop any debounced save still in flight -- it would fire against
+            # a destroyed window. The unconditional save below covers it, and
+            # is also the backstop for changes made inside the debounce window.
+            if self._autosave_job is not None:
+                try:
+                    self.root.after_cancel(self._autosave_job)
+                except Exception:  # noqa: BLE001
+                    pass
+                self._autosave_job = None
             self._pull_config_from_widgets()
             try:
                 self.config.save()

@@ -52,6 +52,10 @@ class Region:
 CLICK_BUTTONS = ("left", "right", "middle")
 CLICK_TYPES = ("single", "double")
 COMPARE_MODES = ("previous", "baseline")
+# "system" follows the OS light/dark setting where that's detectable
+# (reliably on Windows; on Linux it needs a desktop that exposes it via
+# gsettings, and falls back to light when it doesn't).
+THEME_MODES = ("system", "light", "dark")
 
 
 @dataclass
@@ -126,6 +130,9 @@ class Config:
     # Bounded so a multi-hour session cannot grow memory without limit.
     log_history: int = 30
 
+    # Window appearance: one of THEME_MODES.
+    theme: str = "system"
+
     # -- validation --------------------------------------------------------
     def clamp(self) -> "Config":
         """Coerce all fields into their valid ranges.  Returns ``self``."""
@@ -144,6 +151,8 @@ class Config:
             self.click_type = "single"
         if self.compare_mode not in COMPARE_MODES:
             self.compare_mode = "previous"
+        if self.theme not in THEME_MODES:
+            self.theme = "system"
         if not isinstance(self.hotkey_toggle, str) or not self.hotkey_toggle.strip():
             self.hotkey_toggle = "<ctrl>+<shift>+s"
         if not isinstance(self.hotkey_quit, str) or not self.hotkey_quit.strip():

@@ -2,7 +2,7 @@
 
 import json
 
-from screenwatch.config import Config, Region
+from screenwatch.config import THEME_MODES, Config, Region
 
 
 def test_defaults_are_not_ready():
@@ -87,3 +87,39 @@ def test_save_is_atomic_and_valid_json(tmp_path):
     with open(path) as fh:
         data = json.load(fh)
     assert data["sensitivity"] == 50
+
+
+# -- theme (appearance) ----------------------------------------------------
+def test_theme_defaults_to_system():
+    assert Config().theme == "system"
+
+
+def test_clamp_fixes_bad_theme():
+    c = Config(theme="chartreuse")
+    c.clamp()
+    assert c.theme == "system"
+
+
+def test_every_theme_mode_survives_clamp():
+    for mode in THEME_MODES:
+        c = Config(theme=mode)
+        c.clamp()
+        assert c.theme == mode
+
+
+def test_theme_roundtrips(tmp_path):
+    path = str(tmp_path / "cfg.json")
+    Config(theme="dark").save(path)
+    assert Config.load(path).theme == "dark"
+    with open(path) as fh:
+        assert json.load(fh)["theme"] == "dark"
+
+
+def test_config_predating_theme_field_still_loads(tmp_path):
+    # A config written before `theme` existed must keep working and simply
+    # pick up the default, rather than failing to load.
+    path = tmp_path / "cfg.json"
+    path.write_text(json.dumps({"sensitivity": 42, "fps": 3.0}))
+    c = Config.load(str(path))
+    assert c.sensitivity == 42
+    assert c.theme == "system"
