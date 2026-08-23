@@ -157,7 +157,12 @@ class ScreenWatchApp:
         self._slider_labels = {}    # slider label text -> its value entry's StringVar
 
         root.title(f"{__app_name__} — auto-click on change")
-        root.minsize(560, 760)
+        # Height in particular is much lower than the window's natural
+        # size now on purpose: tab content scrolls (see _scrollable_tab),
+        # so shrinking the window no longer hides anything -- this floor
+        # only guards against genuinely too-small-to-use (buttons/labels
+        # need some minimum room), not against fitting all content at once.
+        root.minsize(480, 420)
         root.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self._build_style()
@@ -249,18 +254,26 @@ class ScreenWatchApp:
         self._build_tab_hotkeys(tabview)
         self._build_tab_why(tabview)
 
-        # Locks the window to its natural size for the tab shown here (the
-        # tallest of the four, since the others are strict subsets of its
-        # settings), so switching tabs afterward never resizes the window --
-        # confirmed for real that it otherwise does: with no geometry() call
-        # at all, Tk keeps auto-fitting the toplevel to whichever tab's
-        # content is currently mapped, and CTkTabview only ever shows one
-        # tab's frame at a time, so the window visibly grew and shrank on
-        # every switch. A fixed size, set once up front, is what actually
-        # reads as "one consistent window" rather than a jumping one; the
-        # window stays user-resizable afterward regardless.
-        root.update_idletasks()
-        root.geometry(f"{root.winfo_reqwidth()}x{root.winfo_reqheight()}")
+        # Locks the window to a fixed initial size so switching tabs never
+        # resizes it -- confirmed for real that it otherwise does: with no
+        # geometry() call at all, Tk keeps auto-fitting the toplevel to
+        # whichever tab's content is currently mapped, and CTkTabview only
+        # ever shows one tab's frame at a time, so the window visibly grew
+        # and shrank on every switch.
+        #
+        # This can't be computed from winfo_reqwidth()/reqheight() the way
+        # it could before every tab held a CTkScrollableFrame: a scrollable
+        # frame is designed to be handed an external size and scroll
+        # whatever doesn't fit, so its own reqheight reflects its widget
+        # defaults, not the true height of the cards inside it -- confirmed
+        # for real (not assumed): asking for it here read as low as 573px
+        # even though the Targets+Detection tab alone needs ~860 to show
+        # without scrolling. 560x860 is that value, found empirically by
+        # rendering the tallest tab (Targets & Detection) at a few
+        # candidate heights and checking its scroll canvas's own content
+        # bbox against its viewport until the smallest one that fits
+        # without scrolling. Bump it if that tab's content grows later.
+        root.geometry("560x860")
 
     def _build_control_bar(self, root) -> None:
         ctk = self.ctk
@@ -363,9 +376,30 @@ class ScreenWatchApp:
         else:
             label.configure(text=text, font=font, fg_color="transparent", text_color=_MUTED)
 
+    def _scrollable_tab(self, tabview, name):
+        """A tab whose content scrolls instead of silently clipping when
+        the window is resized smaller than its natural height. The window
+        opens at a size that fits everything with no scrolling needed, but
+        it's still a regular resizable window -- shrink it by hand (a
+        smaller screen, wanting a more compact layout) and, before this,
+        cards past the bottom edge just vanished with no scrollbar and no
+        other way to reach them (confirmed for real, not assumed: this was
+        reported as reproducible on a real window, not something this
+        sandbox's own Xvfb testing had surfaced). Not used for the Why/Log
+        tab, which already manages its own space via a resizable split and
+        the log table's own internal scrolling."""
+        ctk = self.ctk
+        tab = tabview.add(name)
+        scroll = ctk.CTkScrollableFrame(
+            tab, fg_color="transparent",
+            scrollbar_button_color=_CARD_BORDER, scrollbar_button_hover_color="#d5d5da",
+        )
+        scroll.pack(fill="both", expand=True)
+        return scroll
+
     def _build_tab_watch(self, tabview) -> None:
         ctk = self.ctk
-        tab = tabview.add("Targets & Detection")
+        tab = self._scrollable_tab(tabview, "Targets & Detection")
 
         targets = self._section(tab, "Targets")
         targets.pack(fill="x", pady=(0, CARD_GAP))
@@ -418,7 +452,7 @@ class ScreenWatchApp:
 
     def _build_tab_clicking(self, tabview) -> None:
         ctk = self.ctk
-        tab = tabview.add("Clicking")
+        tab = self._scrollable_tab(tabview, "Clicking")
 
         behavior = self._section(tab, "Click Behavior")
         behavior.pack(fill="x", pady=(0, CARD_GAP))
@@ -485,7 +519,7 @@ class ScreenWatchApp:
 
     def _build_tab_hotkeys(self, tabview) -> None:
         ctk = self.ctk
-        tab = tabview.add("Hotkeys")
+        tab = self._scrollable_tab(tabview, "Hotkeys")
 
         card = self._section(tab, "Global Hotkeys")
         card.pack(fill="x", pady=(0, CARD_GAP))
