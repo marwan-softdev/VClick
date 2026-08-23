@@ -148,11 +148,12 @@ a:hover { color: var(--color-ember); }
 .lede { font-size: 1.08rem; max-width: 46ch; }
 .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
 .platforms { font-size: .85rem; color: var(--color-mid-gray); margin: 0; }
-.hero-shot img {
+.hero-shot video {
   width: 100%;
   height: auto;
   border-radius: var(--radius-card);
   display: block;
+  background: var(--color-ink);
   box-shadow: var(--shadow-card);
 }
 
@@ -163,17 +164,7 @@ section h2 {
   font-weight: 500;
   margin-bottom: 32px;
 }
-.features, .demo, .how, .download { border-top: 1px solid var(--color-hairline); }
-
-/* --- demo --- */
-.demo-frame {
-  border-radius: var(--radius-card);
-  overflow: hidden;
-  background: var(--color-ink);
-  box-shadow: var(--shadow-card);
-}
-.demo-frame video { display: block; width: 100%; height: auto; }
-.demo-note { font-size: .88rem; color: var(--color-mid-gray); margin-top: 14px; margin-bottom: 0; }
+.try, .how, .download { border-top: 1px solid var(--color-hairline); }
 
 /* --- feature grid --- */
 .grid {
@@ -204,6 +195,21 @@ section h2 {
 }
 .card h3 { font-size: 1.02rem; font-weight: 500; color: var(--color-ink); }
 .card p { margin-bottom: 0; font-size: .93rem; }
+
+/* --- features disclosure --- */
+.features-more { margin-top: 28px; }
+.features-more summary {
+  cursor: pointer;
+  font-weight: 500;
+  font-size: .92rem;
+  color: var(--color-mid-gray);
+  list-style: none;
+}
+.features-more summary::-webkit-details-marker { display: none; }
+.features-more summary::before { content: "+ "; color: var(--color-ember); }
+.features-more[open] summary::before { content: "− "; }
+.features-more summary:hover { color: var(--color-ink); }
+.features-more .grid { margin-top: 20px; }
 
 /* --- how it works --- */
 .steps {
@@ -238,21 +244,129 @@ section h2 {
 .steps strong { color: var(--color-ink); font-weight: 500; }
 
 /* --- download --- */
-.download-note { max-width: 62ch; }
-.download-grid { grid-template-columns: repeat(4, 1fr); align-items: start; }
-.card-download h3 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.card-download .btn { margin-top: 4px; }
-.card-soon { opacity: .55; }
-.badge {
-  font-size: .64rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  background: var(--color-canvas);
-  color: var(--color-mid-gray);
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
+.download-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 36px;
 }
+.dl-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.btn-download { padding: 14px 28px; font-size: 1rem; }
+.dl-more { text-align: center; }
+.dl-more summary {
+  cursor: pointer;
+  font-size: .85rem;
+  color: var(--color-mid-gray);
+  list-style: none;
+}
+.dl-more summary::-webkit-details-marker { display: none; }
+.dl-more summary::after { content: " ▾"; }
+.dl-more[open] summary::after { content: " ▴"; }
+.dl-more summary:hover { color: var(--color-ink); }
+.dl-more a {
+  display: block;
+  margin-top: 8px;
+  font-size: .85rem;
+  color: var(--color-mid-gray);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dl-more a:hover { color: var(--color-ember); }
+
+/* --- try it (mock UI) --- */
+.try-note { max-width: 62ch; }
+.mock-window {
+  background: var(--color-paper);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+}
+.mock-screen {
+  position: relative;
+  height: 320px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: crosshair;
+  user-select: none;
+}
+.mock-decoy {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  width: 90px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--color-ink-soft);
+  transition: background .2s ease;
+}
+.mock-decoy.changed { background: var(--color-ember); }
+.mock-region {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  width: 110px;
+  height: 52px;
+  border: 2px dashed var(--color-ember);
+  border-radius: var(--radius-sm);
+  cursor: move;
+}
+.mock-point {
+  position: absolute;
+  top: 150px;
+  left: 200px;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  border: 2px solid var(--color-paper);
+  box-shadow: var(--shadow-card);
+  cursor: grab;
+}
+.mock-point.pulse::after {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  border: 2px solid var(--color-ember);
+  animation: mock-ripple .6s ease-out;
+}
+@keyframes mock-ripple {
+  from { transform: scale(.4); opacity: 1; }
+  to { transform: scale(2.2); opacity: 0; }
+}
+.mock-controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.mock-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .85rem;
+  color: var(--color-mid-gray);
+}
+.mock-log {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  color: var(--color-mid-gray);
+  max-height: 110px;
+  overflow-y: auto;
+}
+.mock-log li { padding: 4px 0; border-top: 1px solid var(--color-hairline); }
+.mock-log li:first-child { border-top: none; }
 
 /* --- footer --- */
 .footer { border-top: 1px solid var(--color-hairline); padding: 24px 0; }
@@ -274,16 +388,15 @@ section h2 {
   .hero h1 { font-size: 2.2rem; }
   .grid { grid-template-columns: 1fr 1fr; }
   .steps { grid-template-columns: 1fr 1fr; }
-  .download-grid { grid-template-columns: 1fr 1fr; }
   .nav-links { gap: 16px; }
 }
 @media (max-width: 560px) {
   .grid { grid-template-columns: 1fr; }
   .steps { grid-template-columns: 1fr; }
-  .download-grid { grid-template-columns: 1fr; }
-  .nav-links a:nth-child(2) { display: none; } /* hide "How it works" */
+  .mock-screen { height: 260px; }
+  .nav-links a:nth-child(1) { display: none; } /* hide "Try it" */
 }
 @media (max-width: 420px) {
-  .nav-links a:nth-child(1) { display: none; } /* hide "Features" too -- keep Download + GitHub */
+  .nav-links a:nth-child(2) { display: none; } /* hide "How it works" too -- keep Download + GitHub */
   .nav-links { gap: 12px; }
 }

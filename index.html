@@ -20,7 +20,7 @@
       <span>ScreenWatch</span>
     </a>
     <nav class="nav-links">
-      <a href="#features">Features</a>
+      <a href="#try-it">Try it</a>
       <a href="#how-it-works">How it works</a>
       <a href="#download">Download</a>
       <a href="https://github.com/mozaher/Marwan_AutoProgram" target="_blank" rel="noopener">GitHub</a>
@@ -47,93 +47,37 @@
         <p class="platforms">Linux &amp; Windows · MIT licensed · no account, no telemetry</p>
       </div>
       <div class="hero-shot">
-        <img src="assets/screenshot.png" alt="ScreenWatch's main window, showing the target region, click point, and detection sliders">
-      </div>
-    </div>
-  </section>
-
-  <section class="demo" id="demo">
-    <div class="wrap">
-      <h2>See it in action</h2>
-      <div class="demo-frame">
-        <video autoplay muted loop playsinline poster="assets/poster.jpg">
-          <source src="assets/demo.webm" type="video/webm">
-          <source src="assets/demo.mp4" type="video/mp4">
+        <video class="hero-video" autoplay muted loop playsinline poster="assets/hero-poster.jpg">
+          <source src="assets/hero.webm" type="video/webm">
+          <source src="assets/hero.mp4" type="video/mp4">
         </video>
       </div>
-      <p class="demo-note">
-        A real, unedited recording: press Start, the watched panel changes
-        state, ScreenWatch clicks it instantly, and the Why/Log tab shows
-        exactly which pixels triggered the click.
-      </p>
     </div>
   </section>
 
-  <section class="features" id="features">
+  <section class="try" id="try-it">
     <div class="wrap">
-      <h2>What it does</h2>
-      <div class="grid">
-
-        <div class="card">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="6"/><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/></svg>
-          </div>
-          <h3>Live, real-screen selection</h3>
-          <p>The screen is never covered while you select. Drag over your
-          real, moving desktop to pick the watch area and the click point —
-          no frozen snapshot.</p>
+      <h2>Try it</h2>
+      <p class="try-note">
+        A mock of the real interface — drag the region, drop the click
+        point, then press Start. Nothing here touches your actual screen.
+      </p>
+      <div class="mock-window">
+        <div class="mock-screen" id="mockScreen">
+          <div class="mock-decoy" id="mockDecoy"></div>
+          <div class="mock-region" id="mockRegion"></div>
+          <div class="mock-point" id="mockPoint"></div>
         </div>
-
-        <div class="card">
-          <div class="card-icon card-icon-accent">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c-4 4.5-6 8-6 11a6 6 0 0 0 12 0c0-3-2-6.5-6-11Z"/></svg>
-          </div>
-          <h3>Colour-aware detection</h3>
-          <p>Reacts to hue changes, not just brightness — a button swapping
-          colour is caught even when a plain grayscale check would miss it.
-          A noise filter ignores render/compression jitter.</p>
+        <div class="mock-controls">
+          <label class="mock-slider">
+            Sensitivity
+            <input type="range" id="mockSensitivity" min="0" max="2" value="1" step="1">
+            <span id="mockSensitivityLabel">Medium</span>
+          </label>
+          <button class="btn btn-primary" id="mockStart" type="button">Start</button>
+          <button class="btn btn-ghost" id="mockStop" type="button" disabled>Stop</button>
         </div>
-
-        <div class="card">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="16" cy="12" r="3"/></svg>
-          </div>
-          <h3>Two detection modes</h3>
-          <p>React to <em>any</em> change from the previous frame, or to a
-          <em>deviation</em> from a fixed starting state — whichever matches
-          what you're watching for.</p>
-        </div>
-
-        <div class="card">
-          <div class="card-icon card-icon-accent">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-          </div>
-          <h3>See exactly why it clicked</h3>
-          <p>Every click is logged with a picture of the pixels that
-          triggered it — changed areas highlighted in red against a
-          desaturated background, browsable per click.</p>
-        </div>
-
-        <div class="card">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="6" cy="10" r=".6" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r=".6" fill="currentColor" stroke="none"/><circle cx="14" cy="10" r=".6" fill="currentColor" stroke="none"/><circle cx="18" cy="10" r=".6" fill="currentColor" stroke="none"/><line x1="6" y1="14" x2="14" y2="14"/></svg>
-          </div>
-          <h3>Customizable hotkeys</h3>
-          <p>Start, stop, and quit with global keyboard shortcuts you record
-          yourself, matched robustly across keyboard layouts and modifier
-          states.</p>
-        </div>
-
-        <div class="card">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,14 7,14 9,7 13,19 16,10 18,14 22,14"/></svg>
-          </div>
-          <h3>Built for long runs</h3>
-          <p>The watched region is down-sampled before every comparison, so
-          detection cost stays independent of your monitor size — comfortably
-          under 1% of one CPU core for a multi-hour session.</p>
-        </div>
-
+        <ul class="mock-log" id="mockLog"></ul>
       </div>
     </div>
   </section>
@@ -159,66 +103,88 @@
           <strong>Press Start.</strong> ScreenWatch clicks the instant the region changes, and logs why.
         </li>
       </ol>
+
+      <details class="features-more">
+        <summary>What are all the features?</summary>
+        <div class="grid">
+
+        <div class="card">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="6"/><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/></svg>
+          </div>
+          <h3>Live, real-screen selection</h3>
+          <p>Drag directly on your real, moving desktop — the screen is never covered while you select.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon card-icon-accent">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c-4 4.5-6 8-6 11a6 6 0 0 0 12 0c0-3-2-6.5-6-11Z"/></svg>
+          </div>
+          <h3>Colour-aware detection</h3>
+          <p>Reacts to hue changes, not just brightness, with noise filtering.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="16" cy="12" r="3"/></svg>
+          </div>
+          <h3>Two detection modes</h3>
+          <p>React to <em>any</em> change, or only a <em>deviation</em> from a fixed starting state.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon card-icon-accent">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <h3>See exactly why it clicked</h3>
+          <p>Every click is logged with a picture of the pixels that triggered it, browsable per click.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="6" cy="10" r=".6" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r=".6" fill="currentColor" stroke="none"/><circle cx="14" cy="10" r=".6" fill="currentColor" stroke="none"/><circle cx="18" cy="10" r=".6" fill="currentColor" stroke="none"/><line x1="6" y1="14" x2="14" y2="14"/></svg>
+          </div>
+          <h3>Customizable hotkeys</h3>
+          <p>Start, stop, and quit with global shortcuts you record yourself.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,14 7,14 9,7 13,19 16,10 18,14 22,14"/></svg>
+          </div>
+          <h3>Built for long runs</h3>
+          <p>Down-sampled comparisons keep it under 1% CPU for a multi-hour session.</p>
+        </div>
+
+        </div>
+      </details>
     </div>
   </section>
 
   <section class="download" id="download">
     <div class="wrap">
       <h2>Download</h2>
-      <p class="download-note">
-        Pick your platform.
-      </p>
 
-      <div class="grid download-grid">
+      <div class="download-options">
 
-        <div class="card card-download">
-          <h3>Source (Linux)</h3>
-          <p>
-            A zip with just what Linux needs. Extract it, then run
-            <code>install.sh</code> — it sets up a virtual environment, adds
-            a launcher icon to your application menu, and opens ScreenWatch
-            automatically when it's done.
-          </p>
-          <a class="btn btn-primary" href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/source-packages-latest-screen-change-q8eylj/ScreenWatch-linux-source.zip">
-            Download .zip
+        <div class="dl-option">
+          <a class="btn btn-primary btn-download" href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/appimage-latest-screen-change-q8eylj/ScreenWatch-x86_64.AppImage">
+            Download for Linux
           </a>
+          <details class="dl-more">
+            <summary>Other options</summary>
+            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/source-packages-latest-screen-change-q8eylj/ScreenWatch-linux-source.zip">Source (.zip) — run install.sh</a>
+          </details>
         </div>
 
-        <div class="card card-download">
-          <h3>Source (Windows)</h3>
-          <p>
-            A zip with just what Windows needs. Extract it, then run
-            <code>install.bat</code> — it sets up a virtual environment, adds
-            a Start Menu / Desktop shortcut, and opens ScreenWatch
-            automatically when it's done.
-          </p>
-          <a class="btn btn-primary" href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/source-packages-latest-screen-change-q8eylj/ScreenWatch-windows-source.zip">
-            Download .zip
+        <div class="dl-option">
+          <a class="btn btn-primary btn-download" href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/windows-exe-latest-screen-change-q8eylj/ScreenWatch.exe">
+            Download for Windows
           </a>
-        </div>
-
-        <div class="card card-download">
-          <h3>AppImage (Linux)</h3>
-          <p>
-            One portable file with everything bundled in — Python, Tkinter,
-            and every dependency. Mark it executable once, then double-click
-            it from then on. No install step, no root.
-          </p>
-          <a class="btn btn-primary" href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/appimage-latest-screen-change-q8eylj/ScreenWatch-x86_64.AppImage">
-            Download AppImage
-          </a>
-        </div>
-
-        <div class="card card-download">
-          <h3>Windows installer</h3>
-          <p>
-            A standalone <code>.exe</code> that bundles everything needed —
-            Python, Tkinter, and every dependency. No separate Python
-            install, no console window.
-          </p>
-          <a class="btn btn-primary" href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/windows-exe-latest-screen-change-q8eylj/ScreenWatch.exe">
-            Download ScreenWatch.exe
-          </a>
+          <details class="dl-more">
+            <summary>Other options</summary>
+            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/source-packages-latest-screen-change-q8eylj/ScreenWatch-windows-source.zip">Source (.zip) — run install.bat</a>
+          </details>
         </div>
 
       </div>
@@ -234,5 +200,6 @@
   </div>
 </footer>
 
+<script src="app.js"></script>
 </body>
 </html>
