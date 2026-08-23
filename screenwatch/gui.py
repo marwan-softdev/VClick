@@ -385,9 +385,14 @@ class ScreenWatchApp:
         cards past the bottom edge just vanished with no scrollbar and no
         other way to reach them (confirmed for real, not assumed: this was
         reported as reproducible on a real window, not something this
-        sandbox's own Xvfb testing had surfaced). Not used for the Why/Log
-        tab, which already manages its own space via a resizable split and
-        the log table's own internal scrolling."""
+        sandbox's own Xvfb testing had surfaced). Also used for the Why/Log
+        tab -- its resizable split and the log table's own internal
+        scrolling only cover the log rows themselves; the split as a whole,
+        and the Save/View buttons and caption below it, could still get
+        squashed off the bottom of the window with nothing able to reach
+        them (see the note above that tab's own split for how its content
+        still grows to fill extra room instead of just sitting at a fixed
+        size once wrapped in this)."""
         ctk = self.ctk
         tab = tabview.add(name)
         scroll = ctk.CTkScrollableFrame(
@@ -574,7 +579,7 @@ class ScreenWatchApp:
 
     def _build_tab_why(self, tabview) -> None:
         ctk, ttk, tk = self.ctk, self.ttk, self.tk
-        tab = tabview.add("Why / Log")
+        tab = self._scrollable_tab(tabview, "Why / Log")
 
         top = ctk.CTkFrame(tab, fg_color="transparent")
         top.pack(fill="x", pady=(0, 10))
@@ -668,10 +673,23 @@ class ScreenWatchApp:
         # X11 reports the wheel as buttons 4/5 (harmless no-ops on Windows,
         # which instead sends <MouseWheel>, bound below); bind both so the
         # log scrolls under the cursor on every platform without needing focus.
-        self.log_tree.bind("<Button-4>", lambda e: self.log_tree.yview_scroll(-3, "units"))
-        self.log_tree.bind("<Button-5>", lambda e: self.log_tree.yview_scroll(3, "units"))
-        self.log_tree.bind("<MouseWheel>",
-                           lambda e: self.log_tree.yview_scroll(-3 if e.delta > 0 else 3, "units"))
+        def _scroll_log_tree(units):
+            self.log_tree.yview_scroll(units, "units")
+            # This whole tab now lives inside the same CTkScrollableFrame as
+            # every other tab (see _scrollable_tab / the note above split's
+            # construction), which drives its own scrolling from a bind_all
+            # that fires for a wheel event over *any* descendant, this table
+            # included. Without "break" here to stop that bind_all handler
+            # from also firing, one wheel notch over the table scrolled the
+            # table's rows *and* the surrounding tab underneath it at the
+            # same time -- confirmed for real, not assumed. "break" scopes
+            # the wheel back to just the table while the cursor is over it,
+            # exactly like it already was over every other widget.
+            return "break"
+
+        self.log_tree.bind("<Button-4>", lambda e: _scroll_log_tree(-3))
+        self.log_tree.bind("<Button-5>", lambda e: _scroll_log_tree(3))
+        self.log_tree.bind("<MouseWheel>", lambda e: _scroll_log_tree(-3 if e.delta > 0 else 3))
 
         # --- controls that act on the log/table itself ---
         btns = ctk.CTkFrame(logcard, fg_color="transparent")
@@ -713,12 +731,41 @@ class ScreenWatchApp:
         # tab switches when self._why_split_fixed is still False.
         self._why_split_fixed = False
 
+        # _scrollable_tab's CTkScrollableFrame (see its own docstring) only
+        # ever sizes itself to its content's *natural* height -- it never
+        # stretches to fill extra room, which is fine for the other tabs (a
+        # plain stack of fixed-height cards, nothing in them wants to grow)
+        # but wrong here: this tab's picture pane is meant to expand and use
+        # whatever space is available, the way it always did back when this
+        # tab wasn't scrollable at all. Force the frame to at least the
+        # canvas viewport's height -- never below its own natural content
+        # height -- so `split`'s own expand=True still has real extra space
+        # to grow into when the window is tall enough (unchanged from
+        # before), while still letting the frame exceed the viewport, and
+        # scroll, when the window is too small for everything to fit.
+        # Confirmed for real this was needed: without it, shrinking the
+        # window pushed the Save/View buttons and the caption below the
+        # split off the bottom of the window with no scrollbar able to
+        # reach them -- the exact "squashed and I can't scroll" bug this
+        # whole tab conversion to _scrollable_tab exists to fix.
+        canvas = tab._parent_canvas
+
+        def _stretch_why_tab(_event=None):
+            tab.update_idletasks()
+            target = max(tab.winfo_reqheight(), canvas.winfo_height())
+            canvas.itemconfigure(tab._create_window_id, height=target)
+
+        canvas.bind("<Configure>", _stretch_why_tab, add="+")
+        tab.bind("<Configure>", _stretch_why_tab, add="+")
+
         def _on_tab_changed():
-            if self._why_split_fixed or tabview.get() != "Why / Log":
+            if tabview.get() != "Why / Log":
                 return
-            self._why_split_fixed = True
             self.root.update_idletasks()
-            split.sashpos(0, logcard.winfo_reqheight())
+            _stretch_why_tab()
+            if not self._why_split_fixed:
+                self._why_split_fixed = True
+                split.sashpos(0, logcard.winfo_reqheight())
 
         tabview.configure(command=_on_tab_changed)
 
@@ -877,12 +924,13 @@ class ScreenWatchApp:
     def select_region(self) -> None:
         from .region_selector import select_region
 
+        geo = self.root.geometry()
         self.root.withdraw()
         self.root.update()
         try:
             region = select_region(self.root)
         finally:
-            self.root.deiconify()
+            self._restore_window(geo)
         if region is not None:
             self.config.region = region
             self._refresh_target_labels()
@@ -890,15 +938,35 @@ class ScreenWatchApp:
     def select_point(self) -> None:
         from .region_selector import select_point
 
+        geo = self.root.geometry()
         self.root.withdraw()
         self.root.update()
         try:
             point = select_point(self.root)
         finally:
-            self.root.deiconify()
+            self._restore_window(geo)
         if point is not None:
             self.config.click_x, self.config.click_y = point
             self._refresh_target_labels()
+
+    def _restore_window(self, geo: str) -> None:
+        """Bring the window back after it was withdrawn for a screen
+        selection, at the exact position it was at before -- not wherever
+        the window manager decides to place it.
+
+        ``root.geometry("560x860")`` at startup only ever requests a size,
+        never a position, so Tk never records an explicit position request
+        for this window. withdraw()/deiconify() unmaps and remaps it, and on
+        remap a window with no requested position gets re-placed by the
+        window manager's own initial-placement policy -- confirmed for real:
+        under a real WM this consistently snapped the window back to the
+        same spot every time, discarding wherever the user had dragged it.
+        Re-applying the geometry captured just before withdraw() (which,
+        once the window has been shown at least once, includes its current
+        position) pins it back to that same spot instead.
+        """
+        self.root.deiconify()
+        self.root.geometry(geo)
 
     # ------------------------------------------------------------- control
     def toggle(self) -> None:
