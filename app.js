@@ -25,8 +25,8 @@
 
     var syncToggleState = function () {
       var playing = !video.paused && !video.ended;
-      iconPause.hidden = !playing;
-      iconPlay.hidden = playing;
+      iconPause.classList.toggle("is-hidden", !playing);
+      iconPlay.classList.toggle("is-hidden", playing);
       toggleBtn.setAttribute("aria-pressed", String(playing));
       toggleBtn.setAttribute("aria-label", playing ? "Pause demo" : "Play demo");
     };

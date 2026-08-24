@@ -198,6 +198,7 @@ a:hover { color: var(--color-ember); }
   background: rgba(255, 255, 255, 0.15);
 }
 .hero-video-btn-play:hover { background: rgba(255, 255, 255, 0.25); }
+.hero-video-btn-play svg.is-hidden { display: none; }
 
 /* --- section shells --- */
 section { padding: 64px 0; }
