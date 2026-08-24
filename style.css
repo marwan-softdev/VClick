@@ -160,6 +160,44 @@ a:hover { color: var(--color-ember); }
   background: var(--color-ink);
   box-shadow: var(--shadow-card);
 }
+.hero-video-controls {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(10, 10, 10, 0.55);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.hero-shot:hover .hero-video-controls,
+.hero-shot:focus-within .hero-video-controls {
+  opacity: 1;
+}
+.hero-video-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+.hero-video-btn:hover { background: rgba(255, 255, 255, 0.15); }
+.hero-video-btn-play {
+  width: 38px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.15);
+}
+.hero-video-btn-play:hover { background: rgba(255, 255, 255, 0.25); }
 
 /* --- section shells --- */
 section { padding: 64px 0; }
