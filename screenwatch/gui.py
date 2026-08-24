@@ -10,6 +10,7 @@ can still be imported for tooling/tests without a display.
 from __future__ import annotations
 
 import queue
+import threading
 from typing import Optional
 
 from . import __app_name__, __version__
@@ -19,6 +20,7 @@ from .history import DetectionHistory
 from .hotkeys import HotkeyManager, is_valid, parse_hotkey, pretty
 from .monitor import Monitor, MonitorEvent
 from .sound import Beeper
+from .updates import UpdateCheckResult, check_for_update
 
 PAD = 14
 
@@ -172,6 +174,7 @@ class ScreenWatchApp:
         self._events: "queue.Queue[MonitorEvent]" = queue.Queue()
         self._actions: "queue.Queue[str]" = queue.Queue()
         self._observed: "queue.Queue[str]" = queue.Queue()
+        self._update_queue: "queue.Queue[UpdateCheckResult]" = queue.Queue()
         self.monitor = Monitor(self.config, on_event=self._events.put)
         self.hotkeys = HotkeyManager()
         self._history = DetectionHistory(self.config.log_history)
@@ -181,6 +184,10 @@ class ScreenWatchApp:
         self._preview_photo = None  # keep a ref so Tk doesn't GC the image
         self._slider_labels = {}    # slider label text -> its value entry's StringVar
         self._autosave_job = None   # pending debounced save (see _schedule_autosave)
+        self._update_check_running = False
+        self._update_check_manual = False
+        self._latest_release_url = None
+        self._update_check_after_id = None
 
         root.title(f"{__app_name__} — auto-click on change")
         # Height in particular is much lower than the window's natural
@@ -197,6 +204,11 @@ class ScreenWatchApp:
 
         self._apply_hotkeys()
         self.root.after(100, self._poll)
+        # A short delay so the launch check doesn't compete with the
+        # window's initial render.
+        if self.config.auto_check_updates:
+            self._update_check_after_id = self.root.after(
+                1500, lambda: self._start_update_check(manual=False))
 
     # ------------------------------------------------------------------ UI
     def _mode_color(self, token):
@@ -868,6 +880,32 @@ class ScreenWatchApp:
         self._btn(general, "Reset to defaults…", self.reset_settings, width=150).grid(
             row=5, column=2, sticky="e", padx=(0, 16), pady=(0, 16))
 
+        # --- Updates ----------------------------------------------------------
+        updates = self._section(tab, "Updates")
+        updates.pack(fill="x", pady=(0, CARD_GAP))
+        self.autocheck_var = self.tk.BooleanVar()
+        ctk.CTkCheckBox(updates, text="Automatically check for updates on launch",
+                         variable=self.autocheck_var, command=self._on_setting_change,
+                         fg_color=_ACCENT, hover_color=_ACCENT_HOVER, border_color=_MUTED2,
+                         checkmark_color="white", text_color=_TEXT).grid(
+            row=2, column=0, columnspan=3, sticky="w", padx=(16, 0), pady=(0, 16))
+
+        row3 = ctk.CTkFrame(updates, fg_color="transparent")
+        row3.grid(row=3, column=0, columnspan=3, sticky="ew", padx=16, pady=(0, 8))
+        self.update_status_lbl = ctk.CTkLabel(row3, text="Not checked yet", font=("Sans", 12, "bold"),
+                                               fg_color="transparent", text_color=_MUTED,
+                                               corner_radius=6, anchor="w")
+        self.update_status_lbl.pack(side="left")
+        self._style_chip(self.update_status_lbl, "Not checked yet", False)
+        self.check_updates_btn = self._btn(
+            row3, "Check for Updates", lambda: self._start_update_check(manual=True), width=150)
+        self.check_updates_btn.pack(side="right")
+
+        self.view_release_btn = self._btn(
+            updates, "View release ↗", self._open_release_page, width=150)
+        self.view_release_btn.grid(row=4, column=0, sticky="w", padx=(16, 0), pady=(0, 16))
+        self.view_release_btn.grid_remove()
+
         # --- About ----------------------------------------------------------
         # Folded in from what used to be a native "Help > About" messagebox:
         # a modal system dialog was the one surface that could never match
@@ -1038,6 +1076,7 @@ class ScreenWatchApp:
         self.preview_var.set(c.show_detection_preview)
         self.loghistory_var.set(c.log_history)
         self.theme_btn.set(_THEME_LABELS.get(c.theme, "System"))
+        self.autocheck_var.set(c.auto_check_updates)
         self._refresh_target_labels()
         self._refresh_hotkey_labels()
         for label, var, fmt in (
@@ -1070,6 +1109,7 @@ class ScreenWatchApp:
             c.log_history = int(self.loghistory_var.get())
         except (ValueError, self.tk.TclError):
             pass  # mid-edit garbage in the entry; keep the last good value
+        c.auto_check_updates = bool(self.autocheck_var.get())
         c.clamp()
         self._history.set_capacity(c.log_history)
 
@@ -1235,6 +1275,17 @@ class ScreenWatchApp:
                     except Exception as exc:  # noqa: BLE001 - one bad event
                         # must never kill the loop
                         self._set_status(f"UI error: {exc}", _ERROR)
+
+                while True:
+                    try:
+                        result = self._update_queue.get_nowait()
+                    except queue.Empty:
+                        break
+                    try:
+                        self._handle_update_result(result)
+                    except Exception as exc:  # noqa: BLE001 - one bad result
+                        # must never kill the loop
+                        self._set_status(f"UI error: {exc}", _ERROR)
         finally:
             if not quitting:
                 self.root.after(100, self._poll)
@@ -1266,6 +1317,57 @@ class ScreenWatchApp:
                 text=f"clicks: {ev.clicks}   ·   uptime: {_fmt_uptime(ev.elapsed)}"
                      f"   ·   change: {ev.score * 100:.2f}%"
             )
+
+    # ---------------------------------------------------------- updates
+    def _start_update_check(self, manual: bool) -> None:
+        """Kick off a background check; the result lands on ``_update_queue``
+        and is picked up by ``_poll`` -- the network call itself never
+        touches Tk, mirroring how ``Monitor`` only ever calls back into a
+        thread-safe queue."""
+        if self._update_check_running:
+            return
+        self._update_check_running = True
+        self._update_check_manual = manual
+        self.check_updates_btn.configure(state="disabled")
+        self._style_chip(self.update_status_lbl, "Checking…", False)
+        threading.Thread(
+            target=lambda: self._update_queue.put(check_for_update()),
+            daemon=True,
+        ).start()
+
+    def _handle_update_result(self, result: UpdateCheckResult) -> None:
+        self._update_check_running = False
+        self.check_updates_btn.configure(state="normal")
+        self._latest_release_url = result.release_url
+
+        if result.status == "update_available":
+            self._style_chip(self.update_status_lbl, "Update available", True)
+            self.view_release_btn.grid()
+        else:
+            text = {
+                "up_to_date": "You're up to date",
+                "not_applicable": "Not available for this build",
+                "error": "Couldn't check for updates",
+            }.get(result.status, result.message)
+            self._style_chip(self.update_status_lbl, text, False)
+            self.view_release_btn.grid_remove()
+
+        # An unrequested background check staying quiet on "nothing to
+        # report" (or a network hiccup) matches how autosave failures are
+        # already handled -- a manual click always gets a response.
+        if self._update_check_manual:
+            color = _OK if result.status == "update_available" else _MUTED
+            if result.status == "error":
+                color = _WARN
+            self._set_status(result.message, color)
+        elif result.status == "update_available":
+            self._set_status("Update available — see Settings ▸ Updates.", _WARN)
+
+    def _open_release_page(self) -> None:
+        if self._latest_release_url:
+            import webbrowser
+
+            webbrowser.open(self._latest_release_url)
 
     def _log_detection(self, ev: MonitorEvent) -> None:
         """Record a detection and add a selectable row for it."""
@@ -1527,6 +1629,12 @@ class ScreenWatchApp:
                 except Exception:  # noqa: BLE001
                     pass
                 self._autosave_job = None
+            if self._update_check_after_id is not None:
+                try:
+                    self.root.after_cancel(self._update_check_after_id)
+                except Exception:  # noqa: BLE001
+                    pass
+                self._update_check_after_id = None
             self._pull_config_from_widgets()
             try:
                 self.config.save()

@@ -24,6 +24,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Stamp build info
+        run: python packaging/stamp_build_info.py appimage
+
       - name: Build AppImage
         run: bash packaging/appimage/build-appimage.sh
 

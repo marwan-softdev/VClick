@@ -123,3 +123,24 @@ def test_config_predating_theme_field_still_loads(tmp_path):
     c = Config.load(str(path))
     assert c.sensitivity == 42
     assert c.theme == "system"
+
+
+# -- auto_check_updates -----------------------------------------------------
+def test_auto_check_updates_defaults_to_true():
+    assert Config().auto_check_updates is True
+
+
+def test_auto_check_updates_roundtrips(tmp_path):
+    path = str(tmp_path / "cfg.json")
+    Config(auto_check_updates=False).save(path)
+    assert Config.load(path).auto_check_updates is False
+    with open(path) as fh:
+        assert json.load(fh)["auto_check_updates"] is False
+
+
+def test_config_predating_auto_check_updates_field_still_loads(tmp_path):
+    path = tmp_path / "cfg.json"
+    path.write_text(json.dumps({"sensitivity": 42, "fps": 3.0}))
+    c = Config.load(str(path))
+    assert c.sensitivity == 42
+    assert c.auto_check_updates is True

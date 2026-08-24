@@ -24,6 +24,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Stamp build info
+        run: python packaging/stamp_build_info.py windows-exe
+
       - name: Build a console-mode build for verification only (not shipped)
         # --windowed builds have no stdout at all (GUI-subsystem executables
         # get no console/stdio handles), so the real diagnostics can't be

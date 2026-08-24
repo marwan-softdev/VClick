@@ -30,6 +30,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Stamp build info
+        # ubuntu-latest ships a system python3, and the stamping script is
+        # stdlib-only, so no actions/setup-python step is needed just for
+        # this. build-source-zips.sh's git-archive step doesn't see this
+        # on-disk stamp by itself -- it copies the stamped file back in
+        # afterward (see that script).
+        run: python3 packaging/stamp_build_info.py source-packages
+
       - name: Build the Linux-only and Windows-only source zips
         run: bash packaging/source-packages/build-source-zips.sh
 

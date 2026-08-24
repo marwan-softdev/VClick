@@ -133,6 +133,10 @@ class Config:
     # Window appearance: one of THEME_MODES.
     theme: str = "system"
 
+    # Check for a newer build on launch (also always available on-demand via
+    # the "Check for Updates" button in Settings).
+    auto_check_updates: bool = True
+
     # -- validation --------------------------------------------------------
     def clamp(self) -> "Config":
         """Coerce all fields into their valid ranges.  Returns ``self``."""

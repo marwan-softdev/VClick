@@ -14,6 +14,13 @@ mkdir -p "$STAGE/linux/ScreenWatch" "$STAGE/windows/ScreenWatch"
 git archive HEAD | tar -x -C "$STAGE/linux/ScreenWatch"
 git archive HEAD | tar -x -C "$STAGE/windows/ScreenWatch"
 
+# git archive HEAD only reflects the last commit, never this run's on-disk
+# build stamp (written by packaging/stamp_build_info.py just before this
+# script runs, for the update-notification feature) -- overwrite what
+# git archive extracted with the real, stamped file.
+cp screenwatch/build_info.py "$STAGE/linux/ScreenWatch/screenwatch/build_info.py"
+cp screenwatch/build_info.py "$STAGE/windows/ScreenWatch/screenwatch/build_info.py"
+
 # Each platform only gets its own installer/runner/launcher files.
 rm -f "$STAGE/linux/ScreenWatch/install.bat" "$STAGE/linux/ScreenWatch/run.bat"
 rm -f "$STAGE/windows/ScreenWatch/install.sh" "$STAGE/windows/ScreenWatch/run.sh"
