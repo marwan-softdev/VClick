@@ -334,6 +334,7 @@ section h2 {
 }
 .footer-inner a { color: var(--color-mid-gray); }
 .footer-inner a:hover { color: var(--color-ember); }
+.footer-links { display: flex; gap: 16px; flex-wrap: wrap; }
 
 /* --- responsive --- */
 @media (max-width: 860px) {
