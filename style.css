@@ -336,6 +336,34 @@ section h2 {
 .footer-inner a:hover { color: var(--color-ember); }
 .footer-links { display: flex; gap: 16px; flex-wrap: wrap; }
 
+.report-bug { position: relative; }
+.report-bug summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--color-mid-gray);
+}
+.report-bug summary::-webkit-details-marker { display: none; }
+.report-bug summary:hover { color: var(--color-ember); }
+.report-bug-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  min-width: 160px;
+  background: var(--color-paper);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 6px;
+  z-index: 5;
+}
+.report-bug-menu a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: .8rem;
+  color: var(--color-ink);
+}
+.report-bug-menu a:hover { background: var(--color-canvas); color: var(--color-ink); }
+
 /* --- responsive --- */
 @media (max-width: 860px) {
   .hero h1 { font-size: 2.2rem; }
