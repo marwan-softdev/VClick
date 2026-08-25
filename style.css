@@ -287,7 +287,6 @@ section h2 {
 .steps strong { color: var(--color-ink); font-weight: 500; }
 
 /* --- download --- */
-.download { padding-bottom: 160px; }
 .download-options {
   display: flex;
   flex-wrap: wrap;
@@ -336,33 +335,51 @@ section h2 {
 .footer-inner a:hover { color: var(--color-ember); }
 .footer-links { display: flex; gap: 16px; flex-wrap: wrap; }
 
-.report-bug { position: relative; }
-.report-bug summary {
-  cursor: pointer;
-  list-style: none;
-  color: var(--color-mid-gray);
-}
-.report-bug summary::-webkit-details-marker { display: none; }
-.report-bug summary:hover { color: var(--color-ember); }
-.report-bug-menu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
-  min-width: 160px;
-  background: var(--color-paper);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  padding: 6px;
-  z-index: 5;
-}
-.report-bug-menu a {
-  display: block;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
+.report-bug-btn {
+  font: inherit;
+  font-family: var(--font-mono);
   font-size: .8rem;
-  color: var(--color-ink);
+  color: var(--color-mid-gray);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
-.report-bug-menu a:hover { background: var(--color-canvas); color: var(--color-ink); }
+.report-bug-btn:hover { color: var(--color-ember); }
+
+.report-bug-dialog {
+  border: none;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 28px 28px 24px;
+  width: min(340px, calc(100vw - 48px));
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+}
+.report-bug-dialog::backdrop { background: rgba(10, 10, 10, 0.5); }
+.report-bug-dialog h3 { margin-bottom: .3em; }
+.report-bug-dialog p { font-size: .92rem; margin-bottom: 20px; }
+.report-bug-dialog-options { display: flex; flex-direction: column; gap: 10px; }
+.report-bug-dialog-options .btn { justify-content: center; }
+.report-bug-dialog-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-mid-gray);
+  cursor: pointer;
+}
+.report-bug-dialog-close:hover { background: var(--color-canvas); color: var(--color-ink); }
 
 /* --- responsive --- */
 @media (max-width: 860px) {
@@ -374,8 +391,7 @@ section h2 {
 @media (max-width: 560px) {
   .grid { grid-template-columns: 1fr; }
   .steps { grid-template-columns: 1fr; }
-  .download { padding-bottom: 120px; }
-  .nav-links a:nth-child(1) { display: none; } /* hide "How it works" -- keep Download + GitHub */
+  .nav-links a:nth-child(2) { display: none; } /* hide "How it works" -- keep Download + GitHub */
 }
 @media (max-width: 420px) {
   .nav-links { gap: 12px; }

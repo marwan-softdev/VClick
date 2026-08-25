@@ -52,4 +52,21 @@
       video.currentTime = Math.min(video.currentTime + 5, video.duration);
     });
   }
+
+  // Report a Bug: a centered popup instead of a menu, so it's never
+  // cramped against the bottom of the viewport.
+  var reportBugBtn = document.getElementById("reportBugBtn");
+  var reportBugDialog = document.getElementById("reportBugDialog");
+  var reportBugClose = document.getElementById("reportBugClose");
+  if (reportBugBtn && reportBugDialog && reportBugClose) {
+    reportBugBtn.addEventListener("click", function () {
+      reportBugDialog.showModal();
+    });
+    reportBugClose.addEventListener("click", function () {
+      reportBugDialog.close();
+    });
+    reportBugDialog.addEventListener("click", function (e) {
+      if (e.target === reportBugDialog) reportBugDialog.close();
+    });
+  }
 })();

@@ -20,8 +20,8 @@
       <span>ScreenWatch</span>
     </a>
     <nav class="nav-links">
-      <a href="#how-it-works">How it works</a>
       <a href="#download">Download</a>
+      <a href="#how-it-works">How it works</a>
       <a href="https://github.com/mozaher/Marwan_AutoProgram" target="_blank" rel="noopener">GitHub</a>
     </nav>
   </div>
@@ -60,6 +60,52 @@
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13,19 22,12 13,5"/><polygon points="3,19 12,12 3,5"/></svg>
           </button>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="download" id="download">
+    <div class="wrap">
+      <h2>Download</h2>
+
+      <div class="download-options">
+
+        <details class="dl-option">
+          <summary class="btn btn-primary btn-download">Linux ▾</summary>
+          <div class="dl-menu">
+            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/appimage-latest-screen-change-q8eylj/ScreenWatch-x86_64.AppImage">
+              <strong>AppImage</strong>
+              <span>One file, no install step</span>
+            </a>
+            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/linux-packages-latest-screen-change-q8eylj/ScreenWatch-x86_64.deb">
+              <strong>.deb</strong>
+              <span>Debian, Ubuntu, and derivatives</span>
+            </a>
+            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/linux-packages-latest-screen-change-q8eylj/ScreenWatch-x86_64.rpm">
+              <strong>.rpm</strong>
+              <span>Fedora, openSUSE, and derivatives</span>
+            </a>
+            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/source-packages-latest-screen-change-q8eylj/ScreenWatch-linux-source.zip">
+              <strong>Source (.zip)</strong>
+              <span>Run install.sh</span>
+            </a>
+          </div>
+        </details>
+
+        <details class="dl-option">
+          <summary class="btn btn-primary btn-download">Windows ▾</summary>
+          <div class="dl-menu">
+            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/windows-exe-latest-screen-change-q8eylj/ScreenWatch.exe">
+              <strong>ScreenWatch.exe</strong>
+              <span>No install step</span>
+            </a>
+            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/source-packages-latest-screen-change-q8eylj/ScreenWatch-windows-source.zip">
+              <strong>Source (.zip)</strong>
+              <span>Run install.bat</span>
+            </a>
+          </div>
+        </details>
+
       </div>
     </div>
   </section>
@@ -143,68 +189,28 @@
     </div>
   </section>
 
-  <section class="download" id="download">
-    <div class="wrap">
-      <h2>Download</h2>
-
-      <div class="download-options">
-
-        <details class="dl-option">
-          <summary class="btn btn-primary btn-download">Linux ▾</summary>
-          <div class="dl-menu">
-            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/appimage-latest-screen-change-q8eylj/ScreenWatch-x86_64.AppImage">
-              <strong>AppImage</strong>
-              <span>One file, no install step</span>
-            </a>
-            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/linux-packages-latest-screen-change-q8eylj/ScreenWatch-x86_64.deb">
-              <strong>.deb</strong>
-              <span>Debian, Ubuntu, and derivatives</span>
-            </a>
-            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/linux-packages-latest-screen-change-q8eylj/ScreenWatch-x86_64.rpm">
-              <strong>.rpm</strong>
-              <span>Fedora, openSUSE, and derivatives</span>
-            </a>
-            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/source-packages-latest-screen-change-q8eylj/ScreenWatch-linux-source.zip">
-              <strong>Source (.zip)</strong>
-              <span>Run install.sh</span>
-            </a>
-          </div>
-        </details>
-
-        <details class="dl-option">
-          <summary class="btn btn-primary btn-download">Windows ▾</summary>
-          <div class="dl-menu">
-            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/windows-exe-latest-screen-change-q8eylj/ScreenWatch.exe">
-              <strong>ScreenWatch.exe</strong>
-              <span>No install step</span>
-            </a>
-            <a href="https://github.com/mozaher/Marwan_AutoProgram/releases/download/source-packages-latest-screen-change-q8eylj/ScreenWatch-windows-source.zip">
-              <strong>Source (.zip)</strong>
-              <span>Run install.bat</span>
-            </a>
-          </div>
-        </details>
-
-      </div>
-    </div>
-  </section>
-
 </main>
 
 <footer class="footer">
   <div class="wrap footer-inner">
     <span>ScreenWatch — MIT License</span>
     <div class="footer-links">
-      <details class="report-bug">
-        <summary>Report a Bug ▾</summary>
-        <div class="report-bug-menu">
-          <a href="https://github.com/mozaher/Marwan_AutoProgram/issues/new?template=bug_report.md" target="_blank" rel="noopener">Via GitHub</a>
-          <a href="https://docs.google.com/forms/d/e/1FAIpQLSeZPriFg8Z4z9m4Y6_jP98x1xdWuWk4ubiywIOj46fXqNB9Wg/viewform" target="_blank" rel="noopener">Via Google Form</a>
-        </div>
-      </details>
+      <button type="button" class="report-bug-btn" id="reportBugBtn">Report a Bug</button>
     </div>
   </div>
 </footer>
+
+<dialog class="report-bug-dialog" id="reportBugDialog">
+  <button type="button" class="report-bug-dialog-close" id="reportBugClose" aria-label="Close">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+  </button>
+  <h3>Report a Bug</h3>
+  <p>How would you like to report it?</p>
+  <div class="report-bug-dialog-options">
+    <a class="btn btn-primary" href="https://github.com/mozaher/Marwan_AutoProgram/issues/new?template=bug_report.md" target="_blank" rel="noopener">Via GitHub</a>
+    <a class="btn btn-ghost" href="https://docs.google.com/forms/d/e/1FAIpQLSeZPriFg8Z4z9m4Y6_jP98x1xdWuWk4ubiywIOj46fXqNB9Wg/viewform" target="_blank" rel="noopener">Via Google Form</a>
+  </div>
+</dialog>
 
 <script src="app.js"></script>
 </body>
