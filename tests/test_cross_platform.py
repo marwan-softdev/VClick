@@ -12,9 +12,9 @@ import sys
 
 import pytest
 
-from screenwatch.config import default_config_path
-from screenwatch.paths import icon_ico_path, icon_path
-from screenwatch.sound import Beeper
+from vclick.config import default_config_path
+from vclick.paths import icon_ico_path, icon_path
+from vclick.sound import Beeper
 
 
 # -- config path -------------------------------------------------------------
@@ -32,21 +32,21 @@ def test_windows_config_path_uses_appdata(monkeypatch):
     appdata = os.path.join("C:", "Users", "Test", "AppData", "Roaming")
     monkeypatch.setenv("APPDATA", appdata)
     path = default_config_path()
-    assert path == os.path.join(appdata, "ScreenWatch", "config.json")
+    assert path == os.path.join(appdata, "VClick", "config.json")
 
 
 def test_windows_config_path_falls_back_without_appdata(monkeypatch):
     monkeypatch.setattr(sys, "platform", "win32")
     monkeypatch.delenv("APPDATA", raising=False)
     path = default_config_path()
-    assert path.endswith(os.path.join("ScreenWatch", "config.json"))
+    assert path.endswith(os.path.join("VClick", "config.json"))
 
 
 def test_linux_config_path_still_uses_xdg(monkeypatch):
     monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setenv("XDG_CONFIG_HOME", "/home/test/.config")
     path = default_config_path()
-    assert path == "/home/test/.config/screenwatch/config.json"
+    assert path == "/home/test/.config/vclick/config.json"
 
 
 def test_linux_config_path_default_without_xdg(monkeypatch):
@@ -54,7 +54,7 @@ def test_linux_config_path_default_without_xdg(monkeypatch):
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     monkeypatch.setenv("HOME", "/home/test")
     path = default_config_path()
-    assert path == "/home/test/.config/screenwatch/config.json"
+    assert path == "/home/test/.config/vclick/config.json"
 
 
 # -- sound backend ------------------------------------------------------------
@@ -85,7 +85,7 @@ def test_windows_beeper_never_shells_out_to_linux_tools(monkeypatch):
     monkeypatch.setattr(sys, "platform", "win32")
     monkeypatch.setitem(sys.modules, "winsound", _FakeWinsound)
 
-    import screenwatch.sound as sound_mod
+    import vclick.sound as sound_mod
 
     def _boom():
         raise AssertionError("must not search for Linux audio players on Windows")
@@ -98,7 +98,7 @@ def test_windows_beeper_never_shells_out_to_linux_tools(monkeypatch):
 
 def test_beeper_falls_back_to_tk_bell_when_nothing_else_works(monkeypatch):
     monkeypatch.setattr(sys, "platform", "linux")
-    import screenwatch.sound as sound_mod
+    import vclick.sound as sound_mod
 
     monkeypatch.setattr(sound_mod, "_candidates", lambda: [])
 
@@ -117,7 +117,7 @@ def test_beeper_falls_back_to_tk_bell_when_nothing_else_works(monkeypatch):
 
 def test_beeper_with_no_widget_and_no_backend_is_silent_and_safe(monkeypatch):
     monkeypatch.setattr(sys, "platform", "linux")
-    import screenwatch.sound as sound_mod
+    import vclick.sound as sound_mod
 
     monkeypatch.setattr(sound_mod, "_candidates", lambda: [])
     b = Beeper(None)

@@ -3,13 +3,13 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "screenwatch"
+name = "vclick"
 version = "1.0.0"
 description = "Watch a screen area and auto-click a location the moment it changes."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
-authors = [{ name = "ScreenWatch" }]
+authors = [{ name = "VClick" }]
 keywords = ["automation", "screen", "auto-click", "linux", "windows", "gui", "monitor"]
 classifiers = [
     "Environment :: Win32 (MS Windows)",
@@ -33,16 +33,16 @@ dependencies = [
 dev = ["pytest>=7.0"]
 
 [project.gui-scripts]
-screenwatch = "screenwatch.cli:main"
+vclick = "vclick.cli:main"
 
 [project.scripts]
-screenwatch-cli = "screenwatch.cli:main"
+vclick-cli = "vclick.cli:main"
 
 [tool.setuptools]
-packages = ["screenwatch"]
+packages = ["vclick"]
 
 [tool.setuptools.package-data]
-screenwatch = ["assets/*.png", "assets/*.ico"]
+vclick = ["assets/*.png", "assets/*.ico"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

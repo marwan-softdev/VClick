@@ -1,13 +1,13 @@
-"""Check whether a newer ScreenWatch build has been published.
+"""Check whether a newer VClick build has been published.
 
 Kept dependency-free (stdlib ``urllib`` only, no import-time network calls)
 and the actual HTTP fetch is an injectable parameter -- the same shape as
-:class:`~screenwatch.monitor.Monitor`'s injectable ``Clicker`` -- so it can
+:class:`~vclick.monitor.Monitor`'s injectable ``Clicker`` -- so it can
 be exercised in tests without touching the network.
 
 There is no meaningful version number to compare (``__version__`` has never
 changed), so this compares this build's stamped time
-(:data:`screenwatch.build_info.BUILD_TIME`) against the freshness of the
+(:data:`vclick.build_info.BUILD_TIME`) against the freshness of the
 matching GitHub release's assets, fetched from the GitHub REST API. The
 release tags are fixed/rolling strings whose *git ref* is not reliable
 (re-tagged in place, and can point to a stale commit) -- so only the API's
@@ -26,7 +26,7 @@ from typing import Callable, Optional
 
 from . import build_info
 
-REPO = "mozaher/Marwan_AutoProgram"
+REPO = "marwan-softdev/VClick"
 _CHANNEL_TAGS = {
     "appimage": "appimage-latest-screen-change-q8eylj",
     "windows-exe": "windows-exe-latest-screen-change-q8eylj",
@@ -41,7 +41,7 @@ def _default_fetch(url: str) -> bytes:
         url,
         headers={
             "Accept": "application/vnd.github+json",
-            "User-Agent": "ScreenWatch-update-check",
+            "User-Agent": "VClick-update-check",
         },
     )
     with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 - fixed https:// API URL

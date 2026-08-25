@@ -1,8 +1,8 @@
-# ScreenWatch 👁️🖱️
+# VisualClick 👁️🖱️
 
 **Watch a region of your screen and auto-click a location the moment it changes.**
 
-ScreenWatch continuously monitors a screen area you pick. The instant that area
+VisualClick continuously monitors a screen area you pick. The instant that area
 changes *visually* — a button lights up, a number updates, an image loads, a
 progress bar finishes — it clicks a location you pick. Both the watched region
 and the click point are chosen visually through a clean, friendly GUI.
@@ -34,7 +34,7 @@ runs natively on **both Linux and Windows**.
   (Windows & Linux X11).
 - 💾 **Remembers everything** — settings and selections persist between runs.
 - 🖥️ **Linux + Windows, with a real launcher icon** — the installer for each
-  platform registers ScreenWatch in your application menu / Start Menu with
+  platform registers VisualClick in your application menu / Start Menu with
   its own icon, so day-to-day you launch it by clicking, never a terminal.
 - 🐧 **X11 & Wayland aware on Linux** — best on X11; on Wayland it falls back
   to `ydotool`/`xdotool` for clicking and tells you what it needs.
@@ -64,18 +64,18 @@ automatically by the steps below).
 ### Linux
 
 ```bash
-git clone <this-repo> screenwatch && cd screenwatch
-./install.sh      # installs python3-tk + ScreenWatch, adds an app-menu icon
+git clone <this-repo> vclick && cd vclick
+./install.sh      # installs python3-tk + VisualClick, adds an app-menu icon
 ```
 
-ScreenWatch opens automatically once the install finishes. From then on,
+VisualClick opens automatically once the install finishes. From then on,
 open it from your application menu / app list like any other program (search
 for it by name). No terminal needed after this one-time install.
 
 #### No sudo / no terminal at all: AppImage
 
 Prefer a single portable file, or don't have root access? Download the
-self-contained `ScreenWatch-*.AppImage` (bundled Python, Tkinter, and
+self-contained `VisualClick-*.AppImage` (bundled Python, Tkinter, and
 dependencies included) from the
 **[`appimage-latest-screen-change-q8eylj` release](../../releases/tag/appimage-latest-screen-change-q8eylj)**. Mark it
 executable once (a checkbox in your file manager, no typing) and double-click
@@ -91,20 +91,20 @@ which is for the install.sh/install.bat path.)
 sudo apt install python3-tk    # Debian/Ubuntu (Fedora: python3-tkinter, Arch: tk)
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python -m screenwatch
+python -m vclick
 ```
 </details>
 
 ### Windows
 
 ```bat
-git clone <this-repo> screenwatch
-cd screenwatch
+git clone <this-repo> vclick
+cd vclick
 install.bat
 ```
 
 That's it — `install.bat` creates a Start Menu shortcut (and a Desktop icon)
-with ScreenWatch's own icon. Search **"ScreenWatch"** in the Start Menu, or
+with VisualClick's own icon. Search **"VisualClick"** in the Start Menu, or
 double-click the desktop icon — it opens with **no console window**.
 
 <details>
@@ -113,7 +113,7 @@ double-click the desktop icon — it opens with **no console window**.
 ```bat
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
-.venv\Scripts\python -m screenwatch
+.venv\Scripts\python -m vclick
 ```
 </details>
 
@@ -131,10 +131,10 @@ run.bat --check        REM Windows
 1. **Select the watch region** — click *Select…* next to “Watch region”, then
    drag a rectangle over the area to monitor.
 2. **Select the click point** — click *Select…* next to “Click point”, then click
-   where you want ScreenWatch to click.
+   where you want VisualClick to click.
 3. **Tune detection** (optional) — set Sensitivity, Check rate, and the Noise
    filter. Defaults work well for most cases.
-4. **Press ▶ Start.** ScreenWatch now watches. When the region changes, it clicks
+4. **Press ▶ Start.** VisualClick now watches. When the region changes, it clicks
    your point. The status bar shows live activity, click count, and uptime.
 5. **Press ■ Stop** (or your start/stop hotkey) when you’re done.
 
@@ -173,7 +173,7 @@ absolute minimum overhead.
 
 Most region pickers freeze a screenshot, or lay a translucent sheet over the
 desktop — which needs a compositing window manager and renders as a **solid
-black screen** without one. ScreenWatch does neither:
+black screen** without one. VisualClick does neither:
 
 * a 1×1, effectively invisible window takes a **global pointer grab**, so every
   mouse move and click anywhere on screen is delivered with absolute
@@ -187,7 +187,7 @@ thing, updating in real time — compositor or not.
 ### The window at a glance
 
 ```
-ScreenWatch — auto-click on change
+VisualClick — auto-click on change
 ──────────────────────────────────────────────
 Watches a screen area and clicks the instant it changes.
 
@@ -230,14 +230,14 @@ see the picture of what triggered it.
 | **Hotkeys** | Enable/disable global hotkeys and record custom combinations for start/stop and quit. |
 
 Settings are saved on exit (or via **File → Save settings**) to
-`~/.config/screenwatch/config.json` on Linux, or `%APPDATA%\ScreenWatch\config.json`
+`~/.config/vclick/config.json` on Linux, or `%APPDATA%\VClick\config.json`
 on Windows.
 
 ---
 
 ## Performance & long runs
 
-ScreenWatch is designed to sit in the background for hours:
+VisualClick is designed to sit in the background for hours:
 
 - Only the selected region is captured (via `mss`), then **down-sampled to a
   ~120 px colour array** before any comparison — the diff cost is independent
@@ -276,12 +276,12 @@ character-based matching lets plain `A` work while `Ctrl+Shift+A` silently does
 nothing.
 
 **On Linux**, for the smoothest experience run an **X11 session** (pick
-“Xorg”/“X11” at your login screen). ScreenWatch runs fine under XWayland. On
+“Xorg”/“X11” at your login screen). VisualClick runs fine under XWayland. On
 native Wayland, install `ydotool` for clicking; `./run.sh --check` will show
 which click backend is active.
 
 **On Windows**, a global hotkey can't reach a window running as Administrator
-unless ScreenWatch is *also* running as Administrator (a Windows security
+unless VisualClick is *also* running as Administrator (a Windows security
 rule, not a bug) — if a hotkey mysteriously stops working, check whether the
 target application is elevated.
 
@@ -311,9 +311,9 @@ target application is elevated.
 ## Project layout
 
 ```
-screenwatch/
+vclick/
   __init__.py        package metadata
-  __main__.py        CLI entry point (python -m screenwatch, --check, --version)
+  __main__.py        CLI entry point (python -m vclick, --check, --version)
   config.py          settings dataclass + JSON persistence (no GUI deps)
   capture.py         mss capture + fast colour down-sampling
   detector.py        NumPy change detection
@@ -327,7 +327,7 @@ screenwatch/
   gui.py             the CustomTkinter window
   assets/            app icon (icon.png, icon.ico), packaged with the app
 assets/
-  screenwatch.desktop  Linux launcher template, filled in by install.sh
+  vclick.desktop  Linux launcher template, filled in by install.sh
 tests/               headless unit + end-to-end tests
 ```
 

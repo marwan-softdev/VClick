@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# One-shot setup for ScreenWatch on Linux (Debian/Ubuntu/Fedora/Arch).
-# Creates a local virtualenv, installs ScreenWatch into it, and registers a
+# One-shot setup for VClick on Linux (Debian/Ubuntu/Fedora/Arch).
+# Creates a local virtualenv, installs VClick into it, and registers a
 # launcher icon in the desktop's application menu — so afterwards you can
-# start ScreenWatch by clicking its icon, with no terminal required.
+# start VClick by clicking its icon, with no terminal required.
 set -euo pipefail
 cd "$(dirname "$0")"
 REPO_DIR="$(pwd)"
 
-echo "== ScreenWatch installer (2026-08-21) =="
+echo "== VisualClick installer (2026-08-21) =="
 
 # 1) Make sure system Tkinter is present (can't be pip-installed reliably).
 if ! python3 -c "import tkinter" >/dev/null 2>&1; then
@@ -23,7 +23,7 @@ if ! python3 -c "import tkinter" >/dev/null 2>&1; then
     fi
 fi
 
-# 2) Create a virtualenv and install ScreenWatch (editable, so the app keeps
+# 2) Create a virtualenv and install VClick (editable, so the app keeps
 #    reading its source/assets straight from this checkout).
 # A previous run may have left an incomplete .venv (interrupted, disk full,
 # etc.) -- one that exists but has no working interpreter. Detect that and
@@ -66,28 +66,28 @@ deactivate
 APPS_DIR="$HOME/.local/share/applications"
 mkdir -p "$APPS_DIR"
 sed \
-    -e "s|__EXEC__|$REPO_DIR/.venv/bin/screenwatch|" \
-    -e "s|__ICON__|$REPO_DIR/screenwatch/assets/icon.png|" \
-    "$REPO_DIR/assets/screenwatch.desktop" > "$APPS_DIR/screenwatch.desktop"
-chmod +x "$APPS_DIR/screenwatch.desktop"
+    -e "s|__EXEC__|$REPO_DIR/.venv/bin/vclick|" \
+    -e "s|__ICON__|$REPO_DIR/vclick/assets/icon.png|" \
+    "$REPO_DIR/assets/vclick.desktop" > "$APPS_DIR/vclick.desktop"
+chmod +x "$APPS_DIR/vclick.desktop"
 
 if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true
 fi
 
 echo
-echo "Done! ScreenWatch is installed."
-echo "  - Open it from your application menu / app list (search \"ScreenWatch\")."
+echo "Done! VisualClick is installed."
+echo "  - Open it from your application menu / app list (search \"VisualClick\")."
 echo "  - Or from a terminal:  ./run.sh"
 echo "  - Diagnostics:         ./run.sh --check"
 
 # 4) Launch it now, so the install is a single "run this script and you're
 #    in the app" step rather than requiring a second trip to the app menu.
 if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
-    echo "Launching ScreenWatch..."
-    nohup "$REPO_DIR/.venv/bin/screenwatch" >/dev/null 2>&1 &
+    echo "Launching VisualClick..."
+    nohup "$REPO_DIR/.venv/bin/vclick" >/dev/null 2>&1 &
     disown
 else
-    echo "No graphical display detected -- open ScreenWatch from your"
+    echo "No graphical display detected -- open VisualClick from your"
     echo "application menu once you're on the desktop."
 fi

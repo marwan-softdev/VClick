@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from screenwatch.capture import capture_size, to_color_samples
+from vclick.capture import capture_size, to_color_samples
 
 
 def _bgra(width, height, b, g, r, a=255):

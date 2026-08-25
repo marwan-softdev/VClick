@@ -1,8 +1,8 @@
 """Locate bundled data files (the app icon) regardless of how it was launched.
 
-The icon lives inside the package at ``screenwatch/assets/`` and is declared
+The icon lives inside the package at ``vclick/assets/`` and is declared
 as package data in ``pyproject.toml``, so it is found the same way whether
-ScreenWatch is run from a source checkout, an editable install
+VClick is run from a source checkout, an editable install
 (``pip install -e .``, what both installers use), or a regular ``pip install``
 into site-packages.
 """

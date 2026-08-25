@@ -5,7 +5,7 @@ on:
     branches:
       - claude/screen-change-auto-click-q8eylj
     paths:
-      - "screenwatch/**"
+      - "vclick/**"
       - "pyproject.toml"
       - "packaging/appimage/**"
       - ".github/workflows/appimage.yml"
@@ -33,11 +33,11 @@ jobs:
       - name: Smoke-test the bundled runtime
         # Confirms the AppImage's own bundled Python actually has a working
         # Tkinter (the one thing python-appimage's manylinux base image
-        # wasn't locally verifiable to include) and that ScreenWatch itself
+        # wasn't locally verifiable to include) and that VClick itself
         # imports and runs inside it -- not just that the file exists.
         run: |
           cd packaging/appimage
-          appimage="$(ls ScreenWatch-*.AppImage)"
+          appimage="$(ls VisualClick-*.AppImage)"
           chmod +x "$appimage"
           "./$appimage" --appimage-extract >/dev/null
           out="$(./squashfs-root/AppRun --check)"
@@ -47,8 +47,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScreenWatch-AppImage
-          path: packaging/appimage/ScreenWatch-*.AppImage
+          name: VClick-AppImage
+          path: packaging/appimage/VisualClick-*.AppImage
           if-no-files-found: error
 
       - name: Publish as a release asset
@@ -68,10 +68,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: appimage-latest-screen-change-q8eylj
-          name: ScreenWatch AppImage (latest build, screen-change-auto-click-q8eylj)
+          name: VClick AppImage (latest build, screen-change-auto-click-q8eylj)
           body: |
             Automatically built from commit ${{ github.sha }} by the
             `Build AppImage` workflow. Download the `.AppImage` file below,
             mark it executable, and run it -- no install step, no root.
           prerelease: true
-          files: packaging/appimage/ScreenWatch-*.AppImage
+          files: packaging/appimage/VisualClick-*.AppImage

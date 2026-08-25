@@ -65,7 +65,7 @@ class Monitor:
             return
         self._stop.clear()
         self._clicks = 0
-        self._thread = threading.Thread(target=self._run, name="screenwatch-monitor", daemon=True)
+        self._thread = threading.Thread(target=self._run, name="vclick-monitor", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
@@ -182,7 +182,7 @@ class Monitor:
             button=cfg.click_button,
             double=(cfg.click_type == "double"),
         )
-        # Audible feedback is raised by the GUI (see ScreenWatchApp), which owns
+        # Audible feedback is raised by the GUI (see VClickApp), which owns
         # a Beeper and can fall back to the Tk bell; doing it here would mean
         # writing BEL to a stdout nobody is watching.
 

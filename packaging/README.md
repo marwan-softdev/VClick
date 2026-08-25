@@ -1,4 +1,4 @@
-# ScreenWatch AppImage
+# VClick AppImage
 
 A single portable executable: mark it executable once (a file-manager
 checkbox, no typing), double-click from then on. No install step, no root,
@@ -9,7 +9,7 @@ package steps (Tkinter, `python3-venv`).
 ## Getting a build
 
 **For end users: download the single `.AppImage` file, don't build it.**
-Every push to this branch that touches `screenwatch/`, `pyproject.toml`, or
+Every push to this branch that touches `vclick/`, `pyproject.toml`, or
 `packaging/appimage/` triggers the `Build AppImage` GitHub Actions workflow,
 which (after a real build and a smoke test) publishes the result to the
 [**`appimage-latest-screen-change-q8eylj` release**](../../releases/tag/appimage-latest-screen-change-q8eylj) — a
@@ -28,25 +28,25 @@ bash packaging/appimage/build-appimage.sh
 ```
 
 This installs `python-appimage`, downloads a base Python 3.11 AppImage
-runtime, bundles ScreenWatch and its dependencies into it, and writes
-`ScreenWatch-<version>-x86_64.AppImage` into this directory.
+runtime, bundles VClick and its dependencies into it, and writes
+`VClick-<version>-x86_64.AppImage` into this directory.
 
 ## How it's built
 
 - `build-appimage.sh` drives [`python-appimage`](https://github.com/niess/python-appimage),
   which fetches a prebuilt, relocatable Python 3.11 runtime (from that
   project's GitHub releases) and pip-installs `requirements.txt` into it.
-- `requirements.txt` pins ScreenWatch's runtime dependencies plus ScreenWatch
+- `requirements.txt` pins VClick's runtime dependencies plus VClick
   itself, installed from **a source tarball URL** of this branch rather than
   a `git+...` VCS spec — a `python-appimage` bug in filtering pip's own
   informational git output on this branch's git version otherwise
   misclassifies a harmless line as a fatal error and aborts the build (see
   the comment in `requirements.txt`). Update that URL to a release tag's
   archive once one is cut.
-- `ScreenWatch.desktop` / `ScreenWatch.png` become the app's menu entry and
+- `VClick.desktop` / `VClick.png` become the app's menu entry and
   icon inside the AppImage.
 - `entrypoint.sh` becomes the AppImage's `AppRun`: it just execs
-  `python -m screenwatch`.
+  `python -m vclick`.
 
 ## Verification status
 

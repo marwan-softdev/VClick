@@ -1,7 +1,7 @@
 """Build stamp, overwritten at CI package time by packaging/stamp_build_info.py.
 
 ``None``/``None`` means "not a stamped package build" -- a dev checkout, a
-`pip install -e .`, or a pre-feature package. :mod:`screenwatch.updates`
+`pip install -e .`, or a pre-feature package. :mod:`vclick.updates`
 treats that as "not applicable", never as an error.
 """
 

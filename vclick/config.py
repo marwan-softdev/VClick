@@ -1,4 +1,4 @@
-"""Configuration model and persistence for ScreenWatch.
+"""Configuration model and persistence for VClick.
 
 The whole application state that is worth remembering between runs lives in the
 :class:`Config` dataclass.  It is intentionally free of any GUI, capture or
@@ -15,16 +15,16 @@ from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Dict, Optional
 
 # ---------------------------------------------------------------------------
-# Where the config file lives: %APPDATA%\ScreenWatch on Windows (the
+# Where the config file lives: %APPDATA%\VClick on Windows (the
 # conventional per-user settings location there), the XDG Base Directory
 # spec (~/.config or $XDG_CONFIG_HOME) everywhere else.
 # ---------------------------------------------------------------------------
 def default_config_path() -> str:
     if sys.platform == "win32":
         base = os.environ.get("APPDATA") or os.path.expanduser("~")
-        return os.path.join(base, "ScreenWatch", "config.json")
+        return os.path.join(base, "VClick", "config.json")
     base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
-    return os.path.join(base, "screenwatch", "config.json")
+    return os.path.join(base, "vclick", "config.json")
 
 
 @dataclass

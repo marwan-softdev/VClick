@@ -12,8 +12,8 @@ import types
 
 import numpy as np
 
-from screenwatch.config import Config, Region
-from screenwatch.monitor import Monitor
+from vclick.config import Config, Region
+from vclick.monitor import Monitor
 
 
 def _solid_bgra(value, w, h):

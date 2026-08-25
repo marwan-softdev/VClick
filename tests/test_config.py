@@ -2,7 +2,7 @@
 
 import json
 
-from screenwatch.config import THEME_MODES, Config, Region
+from vclick.config import THEME_MODES, Config, Region
 
 
 def test_defaults_are_not_ready():

@@ -1,10 +1,10 @@
-"""Command-line logic for ScreenWatch.
+"""Command-line logic for VClick.
 
 Lives here rather than in ``__main__.py`` because PyInstaller (used for the
 standalone Windows .exe) has special, hardcoded handling for any module
 literally named ``__main__`` and fails to bundle one referenced by name
 from elsewhere -- confirmed for real: ``ModuleNotFoundError: No module
-named 'screenwatch.__main__'`` even with a matching ``--hidden-import``.
+named 'vclick.__main__'`` even with a matching ``--hidden-import``.
 ``__main__.py`` is now a thin shim that just imports :func:`main` from here.
 """
 
@@ -18,7 +18,7 @@ from . import __app_name__, __version__
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        prog="screenwatch",
+        prog="vclick",
         description=f"{__app_name__} — watch a screen area and auto-click when it changes.",
     )
     parser.add_argument("--version", action="version", version=f"{__app_name__} {__version__}")
@@ -99,7 +99,7 @@ def _friendly_gui_error(exc: Exception) -> None:
     print(f"Failed to start the GUI: {exc}", file=sys.stderr)
     if "display" in msg or "tclerror" in type(exc).__name__.lower():
         print(
-            "\nNo graphical display was found. ScreenWatch needs a desktop "
+            "\nNo graphical display was found. VClick needs a desktop "
             "session.\nIf you are on a server, run it on the machine with the "
             "screen you want to watch.",
             file=sys.stderr,

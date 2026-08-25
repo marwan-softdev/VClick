@@ -1,6 +1,6 @@
-"""The ScreenWatch desktop GUI (CustomTkinter, with a couple of plain-ttk
+"""The VClick desktop GUI (CustomTkinter, with a couple of plain-ttk
 widgets embedded where CustomTkinter has no equivalent — see the comment
-in :meth:`ScreenWatchApp._build_style`).
+in :meth:`VClickApp._build_style`).
 
 Kept in one file for easy distribution. CustomTkinter/Tkinter are imported at
 call time inside :func:`run` (and the app class's own methods) so this module
@@ -154,7 +154,7 @@ def _event_to_hotkey(event) -> Optional[str]:
     return combo if parse_hotkey(combo) is not None else None
 
 
-class ScreenWatchApp:
+class VClickApp:
     """Builds the window, wires widgets to a shared :class:`Config`, and drives
     a :class:`Monitor` worker."""
 
@@ -284,7 +284,7 @@ class ScreenWatchApp:
 
         header = ctk.CTkFrame(root, fg_color="transparent")
         header.pack(fill="x", padx=PAD, pady=(PAD, 4))
-        ctk.CTkLabel(header, text="ScreenWatch", font=("Sans", 21, "bold"),
+        ctk.CTkLabel(header, text="VisualClick", font=("Sans", 21, "bold"),
                      text_color=_TEXT, anchor="w").pack(fill="x")
         ctk.CTkLabel(header, text="Watches a screen area and clicks the instant it changes.",
                      text_color=_MUTED, anchor="w").pack(fill="x", pady=(2, 0))
@@ -1488,7 +1488,7 @@ class ScreenWatchApp:
             return
         path = filedialog.asksaveasfilename(
             parent=self.root, defaultextension=".png",
-            initialfile=f"screenwatch-click-{det.click_no}.png",
+            initialfile=f"vclick-click-{det.click_no}.png",
             filetypes=[("PNG image", "*.png")],
         )
         if not path:
@@ -1651,11 +1651,11 @@ def run(config: Optional[Config] = None) -> None:
     # .desktop file's StartupWMClass) to match this window back to its icon
     # in the taskbar/alt-tab switcher. Ignored harmlessly on Windows. Tk
     # normalises whatever string is passed to "First letter capitalised,
-    # rest lowercase" (verified: "ScreenWatch" in -> "Screenwatch" out), so
+    # rest lowercase" (verified: "VClick" in -> "Vclick" out), so
     # the .desktop file's StartupWMClass is set to match that real value.
     # CTk is a genuine tkinter.Tk subclass, so className/iconbitmap/
     # iconphoto all still work exactly as they did with plain tk.Tk.
-    root = ctk.CTk(className="ScreenWatch")
+    root = ctk.CTk(className="VClick")
     try:
         import sys
         import tkinter as tk
@@ -1671,5 +1671,5 @@ def run(config: Optional[Config] = None) -> None:
             root.iconphoto(True, tk.PhotoImage(file=png))
     except Exception:  # noqa: BLE001 - a missing/bad icon must never block startup
         pass
-    ScreenWatchApp(root, config)
+    VClickApp(root, config)
     root.mainloop()

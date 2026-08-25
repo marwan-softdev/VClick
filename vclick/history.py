@@ -28,7 +28,7 @@ class Detection:
     timestamp: float = field(default_factory=time.time)
     preview: Optional[str] = None   # base64 PNG explaining the change
     # The monitor's click counter, which restarts at 1 on every run — good for
-    # display, unusable as an id (see ScreenWatchApp._log_detection).
+    # display, unusable as an id (see VClickApp._log_detection).
     click_no: int = 0
 
     @property

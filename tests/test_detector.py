@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from screenwatch.detector import ChangeDetector, DetectionResult, sensitivity_to_area
+from vclick.detector import ChangeDetector, DetectionResult, sensitivity_to_area
 
 
 def _frame(value, shape=(50, 50)):

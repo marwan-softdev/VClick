@@ -2,8 +2,8 @@
 
 import time
 
-from screenwatch.config import Config
-from screenwatch.history import Detection, DetectionHistory
+from vclick.config import Config
+from vclick.history import Detection, DetectionHistory
 
 
 def test_add_and_retrieve():

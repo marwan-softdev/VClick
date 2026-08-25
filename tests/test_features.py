@@ -4,10 +4,10 @@ import base64
 
 import numpy as np
 
-from screenwatch.capture import build_change_preview
-from screenwatch.config import Config
-from screenwatch.detector import ChangeDetector
-from screenwatch.hotkeys import is_valid, pretty
+from vclick.capture import build_change_preview
+from vclick.config import Config
+from vclick.detector import ChangeDetector
+from vclick.hotkeys import is_valid, pretty
 
 
 # -- detector: keep the "what changed" mask --------------------------------
@@ -86,7 +86,7 @@ def test_clamp_repairs_blank_hotkeys():
 
 def test_gui_keysym_mapping_is_importable_headlessly():
     # gui.py must not import tkinter/pynput at module load.
-    from screenwatch.gui import _keysym_to_token
+    from vclick.gui import _keysym_to_token
 
     assert _keysym_to_token("S") == "s"
     assert _keysym_to_token("F5") == "<f5>"
@@ -97,7 +97,7 @@ def test_gui_keysym_mapping_is_importable_headlessly():
 
 # -- live (non-covering) selector geometry ---------------------------------
 def test_rect_from_points_normalises_any_drag_direction():
-    from screenwatch.region_selector import _rect_from_points
+    from vclick.region_selector import _rect_from_points
 
     expected = (100, 50, 300, 250)
     # All four drag directions must yield the same rectangle.
@@ -108,14 +108,14 @@ def test_rect_from_points_normalises_any_drag_direction():
 
 
 def test_rect_from_points_zero_size_click():
-    from screenwatch.region_selector import _rect_from_points
+    from vclick.region_selector import _rect_from_points
 
     assert _rect_from_points(10, 10, 10, 10) == (10, 10, 0, 0)
 
 
 def test_region_selector_imports_without_display():
     # The live selector must not import tkinter at module load.
-    import screenwatch.region_selector as rs
+    import vclick.region_selector as rs
 
     assert hasattr(rs, "select_region")
     assert hasattr(rs, "select_point")

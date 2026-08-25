@@ -1,15 +1,15 @@
 @echo off
 setlocal enabledelayedexpansion
-REM One-shot setup for ScreenWatch on Windows.
-REM Creates a local virtual environment, installs ScreenWatch into it, and
+REM One-shot setup for VClick on Windows.
+REM Creates a local virtual environment, installs VClick into it, and
 REM adds a Start Menu (and Desktop) shortcut with a proper icon -- so
-REM afterwards you can launch ScreenWatch by clicking it, no terminal needed.
+REM afterwards you can launch VClick by clicking it, no terminal needed.
 
 set "REPO_DIR=%~dp0"
 if "%REPO_DIR:~-1%"=="\" set "REPO_DIR=%REPO_DIR:~0,-1%"
 cd /d "%REPO_DIR%"
 
-echo == ScreenWatch installer (2026-08-21) ==
+echo == VisualClick installer (2026-08-21) ==
 
 where python >nul 2>nul
 if errorlevel 1 (
@@ -39,7 +39,7 @@ if not exist ".venv" (
     )
 )
 
-echo Installing ScreenWatch and its dependencies...
+echo Installing VisualClick and its dependencies...
 ".venv\Scripts\python.exe" -m pip install --upgrade pip >nul
 ".venv\Scripts\pip.exe" install -e .
 if errorlevel 1 (
@@ -48,10 +48,10 @@ if errorlevel 1 (
 )
 
 echo Creating a Start Menu shortcut...
-set "TARGET=%REPO_DIR%\.venv\Scripts\screenwatch.exe"
-set "ICON=%REPO_DIR%\screenwatch\assets\icon.ico"
-set "STARTMENU=%APPDATA%\Microsoft\Windows\Start Menu\Programs\ScreenWatch.lnk"
-set "DESKTOP=%USERPROFILE%\Desktop\ScreenWatch.lnk"
+set "TARGET=%REPO_DIR%\.venv\Scripts\vclick.exe"
+set "ICON=%REPO_DIR%\vclick\assets\icon.ico"
+set "STARTMENU=%APPDATA%\Microsoft\Windows\Start Menu\Programs\VisualClick.lnk"
+set "DESKTOP=%USERPROFILE%\Desktop\VisualClick.lnk"
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "$ws = New-Object -ComObject WScript.Shell;" ^
@@ -72,13 +72,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "$s.Save()"
 
 echo.
-echo Done! ScreenWatch is installed.
-echo   - Open it from the Start Menu (search "ScreenWatch"), or the new
+echo Done! VisualClick is installed.
+echo   - Open it from the Start Menu (search "VisualClick"), or the new
 echo     desktop icon -- no console window will appear.
 echo   - Or from a terminal:  run.bat
 echo   - Diagnostics:         run.bat --check
 
-echo Launching ScreenWatch...
+echo Launching VisualClick...
 start "" "%TARGET%"
 
 endlocal

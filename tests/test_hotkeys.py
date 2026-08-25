@@ -2,7 +2,7 @@
 
 import pytest
 
-from screenwatch.hotkeys import (
+from vclick.hotkeys import (
     HotkeyManager, is_valid, modifier_of, normalize_key, parse_hotkey, pretty,
 )
 

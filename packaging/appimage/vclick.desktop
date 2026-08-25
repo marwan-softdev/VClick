@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=ScreenWatch
+Name=VisualClick
 GenericName=Auto-click on screen change
 Comment=Watch a screen area and click a location the moment it changes
-Exec=__EXEC__
-Icon=__ICON__
+Exec=vclick
+Icon=VisualClick
 Terminal=false
 Categories=Utility;
 Keywords=automation;autoclick;screen;monitor;
-StartupWMClass=Screenwatch
+StartupWMClass=Vclick

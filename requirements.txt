@@ -1,4 +1,4 @@
-# ScreenWatch runtime dependencies (Python 3.8+), same on Windows and Linux.
+# VClick runtime dependencies (Python 3.8+), same on Windows and Linux.
 # Tkinter is NOT here — it ships with Python (bundled by the python.org
 # Windows installer; on Debian/Ubuntu it needs the separate system package
 # 'python3-tk' — see README / install.sh / install.bat).

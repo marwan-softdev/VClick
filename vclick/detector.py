@@ -1,6 +1,6 @@
 """Visual change detection.
 
-The detector receives successive grayscale frames (from :mod:`screenwatch.capture`)
+The detector receives successive grayscale frames (from :mod:`vclick.capture`)
 and reports whether the watched region changed enough to warrant a click.
 
 Algorithm (deliberately simple and cheap):

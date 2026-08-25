@@ -6,9 +6,9 @@ import io
 import numpy as np
 import pytest
 
-from screenwatch.capture import build_change_preview
-from screenwatch.history import DetectionHistory
-from screenwatch.sound import Beeper
+from vclick.capture import build_change_preview
+from vclick.history import DetectionHistory
+from vclick.sound import Beeper
 
 PIL = pytest.importorskip("PIL.Image")
 

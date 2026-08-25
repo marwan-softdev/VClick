@@ -7,7 +7,7 @@ pynput>=1.7.6
 Pillow>=9.0.0
 customtkinter>=5.2.0
 
-# ScreenWatch itself, installed from a source tarball of this branch.
+# VClick itself, installed from a source tarball of this branch.
 #
 # NOT a "git+...@branch#egg=..." VCS URL: python-appimage's own git_warnings
 # filter (meant to hide harmless "Running command git clone/checkout" and
@@ -18,4 +18,4 @@ customtkinter>=5.2.0
 # tarball URL sidesteps it entirely: pip never invokes git, so none of those
 # stderr lines exist to be misclassified. Update this to a release tag's
 # archive URL once one exists.
-https://github.com/mozaher/Marwan_AutoProgram/archive/refs/heads/claude/screen-change-auto-click-q8eylj.tar.gz
+https://github.com/marwan-softdev/VClick/archive/refs/heads/claude/screen-change-auto-click-q8eylj.tar.gz

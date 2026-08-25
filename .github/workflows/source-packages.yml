@@ -5,7 +5,7 @@ on:
     branches:
       - claude/screen-change-auto-click-q8eylj
     paths:
-      - "screenwatch/**"
+      - "vclick/**"
       - "tests/**"
       - "assets/**"
       - "pyproject.toml"
@@ -45,19 +45,19 @@ jobs:
         run: |
           cd packaging/source-packages
           echo "-- linux zip --"
-          unzip -l ScreenWatch-linux-source.zip | grep -E "install\.sh|run\.sh"
-          ! unzip -l ScreenWatch-linux-source.zip | grep -qE "install\.bat|run\.bat"
+          unzip -l VClick-linux-source.zip | grep -E "install\.sh|run\.sh"
+          ! unzip -l VClick-linux-source.zip | grep -qE "install\.bat|run\.bat"
           echo "-- windows zip --"
-          unzip -l ScreenWatch-windows-source.zip | grep -E "install\.bat|run\.bat"
-          ! unzip -l ScreenWatch-windows-source.zip | grep -qE "install\.sh|run\.sh|\.desktop"
+          unzip -l VClick-windows-source.zip | grep -E "install\.bat|run\.bat"
+          ! unzip -l VClick-windows-source.zip | grep -qE "install\.sh|run\.sh|\.desktop"
           echo "-- neither zip has the AppImage build tooling --"
-          ! unzip -l ScreenWatch-linux-source.zip | grep -qE "packaging/|\.github/"
-          ! unzip -l ScreenWatch-windows-source.zip | grep -qE "packaging/|\.github/"
+          ! unzip -l VClick-linux-source.zip | grep -qE "packaging/|\.github/"
+          ! unzip -l VClick-windows-source.zip | grep -qE "packaging/|\.github/"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScreenWatch-source-packages
-          path: packaging/source-packages/ScreenWatch-*-source.zip
+          name: VClick-source-packages
+          path: packaging/source-packages/VClick-*-source.zip
           if-no-files-found: error
 
       - name: Publish as release assets
@@ -65,11 +65,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: source-packages-latest-screen-change-q8eylj
-          name: ScreenWatch source packages (latest build, screen-change-auto-click-q8eylj)
+          name: VClick source packages (latest build, screen-change-auto-click-q8eylj)
           body: |
             Automatically built from commit ${{ github.sha }} by the
             `Build source packages` workflow. Two separate zips: one with
             `install.sh`/`run.sh` for Linux, one with `install.bat`/`run.bat`
             for Windows -- neither contains the other platform's installer.
           prerelease: true
-          files: packaging/source-packages/ScreenWatch-*-source.zip
+          files: packaging/source-packages/VClick-*-source.zip
