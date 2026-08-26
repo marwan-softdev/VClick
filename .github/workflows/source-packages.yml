@@ -3,7 +3,7 @@ name: Build source packages
 on:
   push:
     branches:
-      - claude/screen-change-auto-click-q8eylj
+      - main
     paths:
       - "vclick/**"
       - "tests/**"

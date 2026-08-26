@@ -3,7 +3,7 @@ name: Build Windows exe
 on:
   push:
     branches:
-      - claude/screen-change-auto-click-q8eylj
+      - main
     paths:
       - "vclick/**"
       - "pyproject.toml"
