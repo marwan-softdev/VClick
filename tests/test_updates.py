@@ -40,7 +40,7 @@ def test_not_applicable_for_unknown_channel(monkeypatch):
 
 def test_fetch_failure_is_graceful(monkeypatch):
     monkeypatch.setattr(build_info, "BUILD_TIME", "2026-01-01T00:00:00+00:00")
-    monkeypatch.setattr(build_info, "BUILD_CHANNEL", "windows-exe")
+    monkeypatch.setattr(build_info, "BUILD_CHANNEL", "appimage")
     result = updates.check_for_update(fetch=_fetch_raising(urllib.error.URLError("offline")))
     assert result.status == "error"
     assert "offline" in result.message
@@ -48,9 +48,9 @@ def test_fetch_failure_is_graceful(monkeypatch):
 
 def test_update_available_when_asset_is_newer(monkeypatch):
     monkeypatch.setattr(build_info, "BUILD_TIME", "2026-01-01T00:00:00+00:00")
-    monkeypatch.setattr(build_info, "BUILD_CHANNEL", "windows-exe")
+    monkeypatch.setattr(build_info, "BUILD_CHANNEL", "appimage")
     payload = {
-        "html_url": "https://github.com/marwan-softdev/VClick/releases/tag/windows-exe-latest-screen-change-q8eylj",
+        "html_url": "https://github.com/marwan-softdev/VClick/releases/tag/appimage-latest-screen-change-q8eylj",
         "published_at": "2026-01-01T00:00:00Z",
         "assets": [{"updated_at": "2026-06-15T12:00:00Z"}],
     }
@@ -61,7 +61,7 @@ def test_update_available_when_asset_is_newer(monkeypatch):
 
 def test_up_to_date_when_asset_is_older(monkeypatch):
     monkeypatch.setattr(build_info, "BUILD_TIME", "2026-06-15T12:00:00+00:00")
-    monkeypatch.setattr(build_info, "BUILD_CHANNEL", "windows-exe")
+    monkeypatch.setattr(build_info, "BUILD_CHANNEL", "appimage")
     payload = {
         "html_url": "https://example.invalid/release",
         "assets": [{"updated_at": "2026-01-01T00:00:00Z"}],
