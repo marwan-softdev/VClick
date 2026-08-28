@@ -97,13 +97,6 @@ python -m vclick
 
 ### Windows
 
-**Coming to the Microsoft Store** — get VisualClick from
-`[TODO: Microsoft Store link]` once the listing is live. That build is
-signed and updates itself automatically, so it won't trigger a Windows
-Defender/SmartScreen warning the way an unsigned, self-built `.exe` does.
-
-Until then, install from source:
-
 ```bat
 git clone <this-repo> vclick
 cd vclick
