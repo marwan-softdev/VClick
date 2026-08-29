@@ -1,10 +1,6 @@
 <a name="top"></a>
 # VisualClick 👁️🖱️
 
-[![Build AppImage](https://github.com/marwan-softdev/VClick/actions/workflows/appimage.yml/badge.svg)](https://github.com/marwan-softdev/VClick/actions/workflows/appimage.yml)
-[![Build Linux .deb/.rpm](https://github.com/marwan-softdev/VClick/actions/workflows/linux-packages.yml/badge.svg)](https://github.com/marwan-softdev/VClick/actions/workflows/linux-packages.yml)
-[![Build source packages](https://github.com/marwan-softdev/VClick/actions/workflows/source-packages.yml/badge.svg)](https://github.com/marwan-softdev/VClick/actions/workflows/source-packages.yml)
-
 **Watch a region of your screen and auto-click a location the moment it changes.**
 
 VisualClick continuously monitors a screen area you pick. The instant that area
@@ -12,10 +8,6 @@ changes visually — a button lights up, a number updates, a progress bar
 finishes — it clicks a location you pick. Both are chosen visually, live on
 your real desktop, through a clean GUI. Runs for hours on minimal CPU/memory,
 natively on both Linux and Windows.
-
-<!-- Demo video goes here once it's ready, e.g.:
-https://github.com/user-attachments/assets/<id>
--->
 
 ## Contents
 
@@ -36,8 +28,9 @@ https://github.com/user-attachments/assets/<id>
 - 🖼️ **Live, uncluttered selection** — drag directly over your real, moving
   desktop to pick the region and click point; nothing ever freezes or covers
   your screen.
-- ⚡ **Very low resource use** — well under 1% CPU while watching, so it can
-  run in the background for hours without you noticing it's there.
+- ⚡ **Very low resource use** — well under 1% CPU while watching (measured on
+  an 800×600 region at 5 checks/sec), so it can run in the background for
+  hours without you noticing it's there.
 - 🧠 **Two detection modes** — react to *any* change, or only when the region
   deviates from how it looked when you pressed Start.
 - 🎚️ **Sensitivity & noise controls** — tune how big a change has to be to
@@ -55,24 +48,23 @@ https://github.com/user-attachments/assets/<id>
 
 ## Requirements
 
-**Linux** (X11 recommended, Wayland works via a helper — see
-[platform notes](#platform-notes)):
-- Python 3.8+
-- System Tkinter (`python3-tk` on Debian/Ubuntu — a separate package on some distros)
+Python 3.8+, plus `mss`, `numpy`, `pynput`, `Pillow`, and `customtkinter` —
+installed automatically by the steps below.
 
-**Windows** 10/11:
-- Python 3.8+ from [python.org](https://www.python.org/downloads/windows/),
-  **"Add python.exe to PATH"** ticked (that installer already bundles Tkinter)
-
-Both platforms: `mss`, `numpy`, `pynput`, `Pillow`, `customtkinter` — installed
-automatically by the steps below.
+- **Linux** (X11 recommended, Wayland works via a helper — see [platform
+  notes](#platform-notes)): also needs system Tkinter (`python3-tk` on
+  Debian/Ubuntu — a separate package on some distros).
+- **Windows** 10/11: install Python from
+  [python.org](https://www.python.org/downloads/windows/) with **"Add
+  python.exe to PATH"** ticked — that installer already bundles Tkinter.
+- **macOS**: not currently supported.
 
 ## Install
 
 ### Linux
 
 ```bash
-git clone <this-repo> vclick && cd vclick
+git clone https://github.com/marwan-softdev/VClick.git vclick && cd vclick
 ./install.sh      # installs python3-tk + VisualClick, adds an app-menu icon
 ```
 
@@ -101,7 +93,7 @@ application menu from then on.
 ### Windows
 
 ```bat
-git clone <this-repo> vclick
+git clone https://github.com/marwan-softdev/VClick.git vclick
 cd vclick
 install.bat
 ```
@@ -196,7 +188,7 @@ Settings save on exit to `~/.config/vclick/config.json` (Linux) or
 ## Troubleshooting
 
 - **"No click backend available."** Windows: reinstall. Linux: install
-  `pynput` (X11) or `ydotool`/`xdotool` (Wayland). Run `--check` to confirm.
+  `pynput` (X11) or `ydotool` (Wayland). Run `--check` to confirm.
 - **Tkinter error / blank window.** Linux: install `python3-tk`. Windows:
   reinstall Python from python.org (a Microsoft Store Python install
   sometimes lacks Tkinter).
