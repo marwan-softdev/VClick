@@ -1,4 +1,9 @@
+<a name="top"></a>
 # VisualClick 👁️🖱️
+
+[![Build AppImage](https://github.com/marwan-softdev/VClick/actions/workflows/appimage.yml/badge.svg)](https://github.com/marwan-softdev/VClick/actions/workflows/appimage.yml)
+[![Build Linux .deb/.rpm](https://github.com/marwan-softdev/VClick/actions/workflows/linux-packages.yml/badge.svg)](https://github.com/marwan-softdev/VClick/actions/workflows/linux-packages.yml)
+[![Build source packages](https://github.com/marwan-softdev/VClick/actions/workflows/source-packages.yml/badge.svg)](https://github.com/marwan-softdev/VClick/actions/workflows/source-packages.yml)
 
 **Watch a region of your screen and auto-click a location the moment it changes.**
 
@@ -11,6 +16,18 @@ natively on both Linux and Windows.
 <!-- Demo video goes here once it's ready, e.g.:
 https://github.com/user-attachments/assets/<id>
 -->
+
+## Contents
+
+- [Highlights](#highlights)
+- [Requirements](#requirements)
+- [Install](#install)
+- [How to use it](#how-to-use-it)
+- [Settings explained](#settings-explained)
+- [Platform notes](#platform-notes)
+- [Troubleshooting](#troubleshooting)
+- [Development](#development)
+- [License](#license)
 
 ---
 
@@ -36,8 +53,6 @@ https://github.com/user-attachments/assets/<id>
 - 🐧 **X11 & Wayland aware on Linux** — best on X11; falls back to
   `ydotool`/`xdotool` on Wayland.
 
----
-
 ## Requirements
 
 **Linux** (X11 recommended, Wayland works via a helper — see
@@ -51,8 +66,6 @@ https://github.com/user-attachments/assets/<id>
 
 Both platforms: `mss`, `numpy`, `pynput`, `Pillow`, `customtkinter` — installed
 automatically by the steps below.
-
----
 
 ## Install
 
@@ -108,11 +121,25 @@ python -m venv .venv
 ### Check your environment at any time
 
 ```bash
-./run.sh --check      # Linux — reports platform, tkinter, capture/click/sound backends
+./run.sh --check      # Linux
 run.bat --check        REM Windows
 ```
 
----
+Example, on a normal Linux X11 desktop:
+
+```
+VClick 1.0.0
+platform     : Linux 6.8.0
+session type : x11
+DISPLAY      : :0
+WAYLAND      : (unset)
+tkinter      : available
+mss (capture): available
+customtkinter: available (theme assets found)
+click backend: pynput
+sound backend: paplay
+config path  : ~/.config/vclick/config.json
+```
 
 ## How to use it
 
@@ -131,8 +158,6 @@ Every triggered click is a row in the **Why / Log** tab. Click any row to see
 a picture of what changed — unchanged pixels in greyscale, changed pixels in
 red. From there: view it larger, save it as a PNG, or clear the log. Turn it
 off entirely with **Explain detections** for the absolute minimum overhead.
-
----
 
 ## Settings explained
 
@@ -154,8 +179,6 @@ off entirely with **Explain detections** for the absolute minimum overhead.
 Settings save on exit to `~/.config/vclick/config.json` (Linux) or
 `%APPDATA%\VClick\config.json` (Windows).
 
----
-
 ## Platform notes
 
 | | Windows | Linux X11 | Linux Wayland |
@@ -169,8 +192,6 @@ Settings save on exit to `~/.config/vclick/config.json` (Linux) or
   fine under XWayland too). On native Wayland, install `ydotool` for clicking.
 - **Windows**: a global hotkey can't reach a window running as Administrator
   unless VisualClick is *also* elevated — if a hotkey stops working, check that.
-
----
 
 ## Troubleshooting
 
@@ -187,8 +208,6 @@ Settings save on exit to `~/.config/vclick/config.json` (Linux) or
 - **Clicks too often / not enough.** Adjust **Sensitivity** and **Noise
   filter**, and raise the **Cooldown**.
 
----
-
 ## Development
 
 ```bash
@@ -200,8 +219,8 @@ The core (config, capture, detector, monitor) has no import-time GUI/input
 dependencies, so it tests cleanly headless. Windows-only code paths are
 covered by tests that simulate `sys.platform == "win32"`.
 
----
-
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+<p align="right"><a href="#top">Back to top ↑</a></p>
