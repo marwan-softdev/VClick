@@ -43,8 +43,11 @@ runtime, bundles VClick and its dependencies into it, and writes
   misclassifies a harmless line as a fatal error and aborts the build (see
   the comment in `requirements.txt`). Update that URL to a release tag's
   archive once one is cut.
-- `VClick.desktop` / `VClick.png` become the app's menu entry and
-  icon inside the AppImage.
+- `vclick.desktop` becomes the app's menu entry inside the AppImage.
+  `build-appimage.sh` copies the app icon in from `vclick/assets/icon.png`
+  (the one shared source for the icon across the whole project) as
+  `VisualClick.png`, matching the `.desktop` file's `Icon=` name --
+  it's git-ignored, not checked in twice.
 - `entrypoint.sh` becomes the AppImage's `AppRun`: it just execs
   `python -m vclick`.
 

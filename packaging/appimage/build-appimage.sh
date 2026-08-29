@@ -11,6 +11,11 @@ APPIMAGE_DIR="$(pwd)"
 
 echo "== VClick AppImage builder =="
 
+# The icon lives once, at vclick/assets/icon.png -- python-appimage requires
+# an icon file in this directory matching the .desktop file's Icon= name, so
+# copy it in at build time rather than keeping a second copy checked in.
+cp "$APPIMAGE_DIR/../../vclick/assets/icon.png" "$APPIMAGE_DIR/VisualClick.png"
+
 if ! python3 -c "import python_appimage" >/dev/null 2>&1; then
     echo "Installing python-appimage..."
     pip3 install --quiet --upgrade python-appimage
