@@ -1,5 +1,5 @@
 <a name="top"></a>
-# VisualClick 👁️🖱️
+# VisualClick
 
 **Watch a region of your screen and auto-click a location the moment it changes.**
 
@@ -24,26 +24,19 @@ natively on both Linux and Windows.
 ---
 
 ## Highlights
-
-- 🖼️ **Live, uncluttered selection** — drag directly over your real, moving
-  desktop to pick the region and click point; nothing ever freezes or covers
-  your screen.
-- ⚡ **Very low resource use** — well under 1% CPU while watching (measured on
+- **Very low resource use** — under 1% CPU while watching (measured on
   an 800×600 region at 5 checks/sec), so it can run in the background for
-  hours without you noticing it's there.
-- 🧠 **Two detection modes** — react to *any* change, or only when the region
-  deviates from how it looked when you pressed Start.
-- 🎚️ **Sensitivity & noise controls** — tune how big a change has to be to
+  hours without crashing.
+- **Two detection modes** — react to *any* change, or only when the region
+  changes from how it looked when you selected the area.
+- **Sensitivity & noise controls** — tune how big a change has to be to
   count, and filter out flicker or compression noise.
-- 🖱️ **Flexible clicking** — left, right, or middle button, single or double
+- **Flexible clicking** — left, right, or middle button, single or double
   click, with an optional delay and a cooldown between clicks.
-- 🔍 **"Why did it click?"** — every click is logged with a picture of exactly
+- **"Why did it click?"** — every click is logged with a picture of exactly
   what changed, so you can verify or debug what triggered it.
-- ⌨️ **Customizable global hotkeys** for start, stop, and quit.
-- 💾 **Remembers your settings** between runs.
-- 🖥️ **Installs like a normal app** — a Start Menu/app-menu launcher on both
-  platforms, no terminal needed day-to-day.
-- 🐧 **Works on Linux and Windows**, including Wayland (see [platform
+- **Remembers your settings** between runs.
+- **Works on Linux and Windows**, including Wayland (see [platform
   notes](#platform-notes) for the details).
 
 ## Requirements
