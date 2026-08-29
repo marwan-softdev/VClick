@@ -92,13 +92,20 @@ application menu from then on.
 
 ### Windows
 
+**Option 1: Double-click (easiest)**
+1. Download the source zip from the [latest release](../../releases/tag/source-packages-latest) and extract it.
+2. Navigate to the extracted folder and **double-click `install.bat`** — that's it!
+3. The installer runs and creates a Start Menu shortcut (and a Desktop icon) with VisualClick's own icon.
+4. From then on, search **"VisualClick"** in the Start Menu or double-click the desktop icon — it opens with **no console window**.
+
+**Option 2: From command terminal** (if you prefer)
 ```bat
 git clone https://github.com/marwan-softdev/VClick.git vclick
 cd vclick
 install.bat
 ```
 
-Creates a Start Menu shortcut and Desktop icon — launches with no console window.
+Either way, `install.bat` creates a Start Menu shortcut (and a Desktop icon) with VisualClick's own icon, so you can launch it easily from your start menu or desktop — no terminal needed after the one-time install.
 
 <details>
 <summary>Manual install (no shortcuts)</summary>
