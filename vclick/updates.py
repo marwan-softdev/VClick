@@ -29,6 +29,7 @@ from . import build_info
 REPO = "marwan-softdev/VClick"
 _CHANNEL_TAGS = {
     "appimage": "appimage-latest-screen-change-q8eylj",
+    "linux-packages": "linux-packages-latest-screen-change-q8eylj",
     "source-packages": "source-packages-latest-screen-change-q8eylj",
 }
 

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=VisualClick
+GenericName=Auto-click on screen change
+Comment=Watch a screen area and click a location the moment it changes
+Exec=vclick
+Icon=vclick
+Terminal=false
+Categories=Utility;
+Keywords=automation;autoclick;screen;monitor;
+StartupWMClass=Vclick
