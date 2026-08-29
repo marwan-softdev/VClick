@@ -8,4 +8,4 @@ treats that as "not applicable", never as an error.
 from __future__ import annotations
 
 BUILD_TIME: str | None = None
-BUILD_CHANNEL: str | None = None  # "appimage" | "source-packages"
+BUILD_CHANNEL: str | None = None  # "appimage" | "linux-packages" | "source-packages"

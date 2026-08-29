@@ -1,0 +1,85 @@
+name: Build Linux .deb/.rpm packages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "vclick/**"
+      - "pyproject.toml"
+      - "packaging/linux-packages/**"
+      - ".github/workflows/linux-packages.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Stamp build info
+        run: python packaging/stamp_build_info.py linux-packages
+
+      - name: Install packaging tools (fpm, rpmbuild)
+        # fpm is a Ruby gem, not a Python package -- ubuntu-latest ships a
+        # usable Ruby already. rpmbuild itself isn't preinstalled and is
+        # needed even just to *build* (not install) an .rpm with fpm.
+        run: |
+          sudo gem install --no-document fpm
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends rpm
+
+      - name: Build .deb and .rpm
+        run: bash packaging/linux-packages/build-linux-packages.sh
+
+      - name: Smoke-test both packages
+        # Installs each package for real and runs the installed `vclick`
+        # binary's --check, the same bar the AppImage and (former)
+        # Windows .exe builds are held to: not just "the file exists",
+        # but "the installed app's bundled Tkinter/mss actually work".
+        run: |
+          set -e
+          sudo dpkg -i packaging/linux-packages/VClick-x86_64.deb
+          out="$(vclick --check)"
+          echo "$out"
+          echo "$out" | grep -q "tkinter      : available"
+          echo "$out" | grep -q "mss (capture): available"
+          sudo dpkg -r vclick
+
+          sudo rpm -i --nodeps packaging/linux-packages/VClick-x86_64.rpm
+          out="$(vclick --check)"
+          echo "$out"
+          echo "$out" | grep -q "tkinter      : available"
+          echo "$out" | grep -q "mss (capture): available"
+          sudo rpm -e vclick
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VClick-linux-packages
+          path: |
+            packaging/linux-packages/VClick-x86_64.deb
+            packaging/linux-packages/VClick-x86_64.rpm
+          if-no-files-found: error
+
+      - name: Publish as release assets
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: linux-packages-latest-screen-change-q8eylj
+          name: VClick Linux .deb/.rpm (latest build, screen-change-auto-click-q8eylj)
+          body: |
+            Automatically built from commit ${{ github.sha }} by the
+            `Build Linux .deb/.rpm packages` workflow. Self-contained --
+            bundled Python, Tkinter, and every dependency -- so no other
+            packages need to be installed first.
+          prerelease: true
+          files: |
+            packaging/linux-packages/VClick-x86_64.deb
+            packaging/linux-packages/VClick-x86_64.rpm

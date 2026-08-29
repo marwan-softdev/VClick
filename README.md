@@ -84,6 +84,17 @@ tooling behind that release lives in `packaging/appimage/` in the full
 repository on GitHub — it's deliberately left out of the source zip above,
 which is for the install.sh/install.bat path.)
 
+#### Native package: .deb / .rpm
+
+Prefer a package your system's package manager tracks? Grab
+`VClick-x86_64.deb` (Debian, Ubuntu, and derivatives) or `VClick-x86_64.rpm`
+(Fedora, openSUSE, and derivatives) from the
+**[`linux-packages-latest-screen-change-q8eylj` release](../../releases/tag/linux-packages-latest-screen-change-q8eylj)**.
+Both are self-contained — bundled Python, Tkinter, and every dependency —
+so nothing else needs to be installed first; `sudo dpkg -i VClick-x86_64.deb`
+or `sudo rpm -i VClick-x86_64.rpm` adds a `vclick` command and an app-menu
+launcher. (Build tooling: `packaging/linux-packages/`.)
+
 <details>
 <summary>Manual install (no launcher icon, no python3-tk auto-install)</summary>
 
