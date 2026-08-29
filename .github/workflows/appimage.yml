@@ -60,15 +60,11 @@ jobs:
         # path). Re-running this updates that same release's asset in place
         # rather than creating a new one each time.
         #
-        # Tag is branch-scoped (not a generic "appimage-latest") because a
-        # generic tag collided with an unrelated pre-existing release from
-        # a different branch on the first attempt at this -- see repo
-        # history around 2026-08-21 if that ever needs revisiting.
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: appimage-latest-screen-change-q8eylj
-          name: VClick AppImage (latest build, screen-change-auto-click-q8eylj)
+          tag_name: appimage-latest
+          name: VClick AppImage (latest build)
           body: |
             Automatically built from commit ${{ github.sha }} by the
             `Build AppImage` workflow. Download the `.AppImage` file below,

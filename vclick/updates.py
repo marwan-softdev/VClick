@@ -28,8 +28,9 @@ from . import build_info
 
 REPO = "marwan-softdev/VClick"
 _CHANNEL_TAGS = {
-    "appimage": "appimage-latest-screen-change-q8eylj",
-    "source-packages": "source-packages-latest-screen-change-q8eylj",
+    "appimage": "appimage-latest",
+    "linux-packages": "linux-packages-latest",
+    "source-packages": "source-packages-latest",
 }
 
 Fetcher = Callable[[str], bytes]
