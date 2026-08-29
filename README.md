@@ -76,10 +76,10 @@ application menu from then on.
 
 - **AppImage** (no sudo, no install step): download
   `VisualClick-*.AppImage` from the
-  [`appimage-latest-screen-change-q8eylj` release](../../releases/tag/appimage-latest-screen-change-q8eylj),
+  [`appimage-latest` release](../../releases/tag/appimage-latest),
   mark it executable, and double-click it.
 - **Native package**: `VClick-x86_64.deb` or `VClick-x86_64.rpm` from the
-  [`linux-packages-latest-screen-change-q8eylj` release](../../releases/tag/linux-packages-latest-screen-change-q8eylj) —
+  [`linux-packages-latest` release](../../releases/tag/linux-packages-latest) —
   both self-contained, `sudo dpkg -i ...` / `sudo rpm -i ...`.
 - **Manual, no launcher icon**:
   ```bash

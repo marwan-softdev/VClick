@@ -72,8 +72,8 @@ jobs:
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: linux-packages-latest-screen-change-q8eylj
-          name: VClick Linux .deb/.rpm (latest build, screen-change-auto-click-q8eylj)
+          tag_name: linux-packages-latest
+          name: VClick Linux .deb/.rpm (latest build)
           body: |
             Automatically built from commit ${{ github.sha }} by the
             `Build Linux .deb/.rpm packages` workflow. Self-contained --

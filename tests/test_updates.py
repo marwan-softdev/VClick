@@ -50,7 +50,7 @@ def test_update_available_when_asset_is_newer(monkeypatch):
     monkeypatch.setattr(build_info, "BUILD_TIME", "2026-01-01T00:00:00+00:00")
     monkeypatch.setattr(build_info, "BUILD_CHANNEL", "appimage")
     payload = {
-        "html_url": "https://github.com/marwan-softdev/VClick/releases/tag/appimage-latest-screen-change-q8eylj",
+        "html_url": "https://github.com/marwan-softdev/VClick/releases/tag/appimage-latest",
         "published_at": "2026-01-01T00:00:00Z",
         "assets": [{"updated_at": "2026-06-15T12:00:00Z"}],
     }

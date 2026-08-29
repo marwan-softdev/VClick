@@ -64,8 +64,8 @@ jobs:
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: source-packages-latest-screen-change-q8eylj
-          name: VClick source packages (latest build, screen-change-auto-click-q8eylj)
+          tag_name: source-packages-latest
+          name: VClick source packages (latest build)
           body: |
             Automatically built from commit ${{ github.sha }} by the
             `Build source packages` workflow. Two separate zips: one with
