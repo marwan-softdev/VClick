@@ -33,25 +33,25 @@ https://github.com/user-attachments/assets/<id>
 
 ## Highlights
 
-- 🖼️ **Truly live selection** — the screen is never covered. You drag directly
-  over your real, moving desktop, no compositor required. Esc or right-click
-  to cancel.
-- ⚡ **Low resource use** — down-scaled NumPy diffing keeps an 800×600 region
-  under ~0.3% of one CPU core at 5 fps, built for 4–5 hour runs.
-- 🧠 **Two detection modes** — react to *any* change, or only a *deviation*
-  from the frame captured on Start.
-- 🎚️ **Sensitivity & noise controls** — tune reaction strength and filter out
-  compression/render jitter.
-- 🖱️ **Flexible clicking** — left/right/middle, single/double, optional delay,
-  and a cooldown so it never machine-guns clicks.
+- 🖼️ **Live, uncluttered selection** — drag directly over your real, moving
+  desktop to pick the region and click point; nothing ever freezes or covers
+  your screen.
+- ⚡ **Very low resource use** — well under 1% CPU while watching, so it can
+  run in the background for hours without you noticing it's there.
+- 🧠 **Two detection modes** — react to *any* change, or only when the region
+  deviates from how it looked when you pressed Start.
+- 🎚️ **Sensitivity & noise controls** — tune how big a change has to be to
+  count, and filter out flicker or compression noise.
+- 🖱️ **Flexible clicking** — left, right, or middle button, single or double
+  click, with an optional delay and a cooldown between clicks.
 - 🔍 **"Why did it click?"** — every click is logged with a picture of exactly
-  which pixels triggered it.
-- ⌨️ **Customizable global hotkeys** for start/stop and quit.
-- 💾 **Remembers everything** — settings and selections persist between runs.
-- 🖥️ **Real launcher icon** on both platforms — day-to-day you launch it by
-  clicking, never a terminal.
-- 🐧 **X11 & Wayland aware on Linux** — best on X11; falls back to
-  `ydotool`/`xdotool` on Wayland.
+  what changed, so you can verify or debug what triggered it.
+- ⌨️ **Customizable global hotkeys** for start, stop, and quit.
+- 💾 **Remembers your settings** between runs.
+- 🖥️ **Installs like a normal app** — a Start Menu/app-menu launcher on both
+  platforms, no terminal needed day-to-day.
+- 🐧 **Works on Linux and Windows**, including Wayland (see [platform
+  notes](#platform-notes) for the details).
 
 ## Requirements
 
