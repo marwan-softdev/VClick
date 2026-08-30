@@ -25,6 +25,7 @@ jobs:
           python-version: "3.11"
 
       - name: Stamp build info
+        id: stamp
         run: python packaging/stamp_build_info.py appimage
 
       - name: Build AppImage
@@ -69,5 +70,7 @@ jobs:
             Automatically built from commit ${{ github.sha }} by the
             `Build AppImage` workflow. Download the `.AppImage` file below,
             mark it executable, and run it -- no install step, no root.
+
+            <!-- vclick-build-time: ${{ steps.stamp.outputs.build-time }} -->
           prerelease: true
           files: packaging/appimage/VisualClick-*.AppImage

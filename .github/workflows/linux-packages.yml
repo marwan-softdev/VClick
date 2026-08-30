@@ -25,6 +25,7 @@ jobs:
           python-version: "3.11"
 
       - name: Stamp build info
+        id: stamp
         run: python packaging/stamp_build_info.py linux-packages
 
       - name: Install packaging tools (fpm, rpmbuild)
@@ -79,6 +80,8 @@ jobs:
             `Build Linux .deb/.rpm packages` workflow. Self-contained --
             bundled Python, Tkinter, and every dependency -- so no other
             packages need to be installed first.
+
+            <!-- vclick-build-time: ${{ steps.stamp.outputs.build-time }} -->
           prerelease: true
           files: |
             packaging/linux-packages/VClick-x86_64.deb

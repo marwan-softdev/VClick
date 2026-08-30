@@ -5,19 +5,32 @@ and the actual HTTP fetch is an injectable parameter -- the same shape as
 :class:`~vclick.monitor.Monitor`'s injectable ``Clicker`` -- so it can
 be exercised in tests without touching the network.
 
-There is no meaningful version number to compare (``__version__`` has never
-changed), so this compares this build's stamped time
-(:data:`vclick.build_info.BUILD_TIME`) against the freshness of the
-matching GitHub release's assets, fetched from the GitHub REST API. The
-release tags are fixed/rolling strings whose *git ref* is not reliable
-(re-tagged in place, and can point to a stale commit) -- so only the API's
-``assets[].updated_at`` / ``published_at`` / ``html_url`` fields are used,
-never the tag ref itself.
+There is no meaningful version number to compare (``__version__`` changes
+only when a stable release is cut, while these rolling channels rebuild on
+every push), so this compares this build's stamped time
+(:data:`vclick.build_info.BUILD_TIME`) against the *stamped time of the
+build currently published* on the matching channel, which each release
+workflow writes into its release body as a machine-readable marker (see
+``_BUILD_MARKER``).
+
+Comparing stamp-to-stamp is the whole point: the two numbers come from the
+same clock at the same point in each build, so the freshest download reads
+as exactly up to date. The obvious-looking alternative -- comparing against
+the release's ``published_at``/``assets[].updated_at`` -- is structurally
+broken, and was the bug this replaced: the stamp is written right after
+checkout but the assets are uploaded at the *end* of the same run, so a
+build's own assets are always ~1-2 minutes "newer" than the build inside
+them and every fresh download reported "update available" forever.
+
+The release tags are fixed/rolling strings whose *git ref* is not reliable
+(re-tagged in place, and can point to a stale commit), so the tag ref is
+never used either.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -32,6 +45,11 @@ _CHANNEL_TAGS = {
     "linux-packages": "linux-packages-latest",
     "source-packages": "source-packages-latest",
 }
+
+# Written into each rolling release's body by the publishing workflow, from
+# the very same value packaging/stamp_build_info.py baked into the artifact.
+# An HTML comment so it carries no weight in the rendered release notes.
+_BUILD_MARKER = re.compile(r"<!--\s*vclick-build-time:\s*(\S+?)\s*-->")
 
 Fetcher = Callable[[str], bytes]
 
@@ -70,8 +88,16 @@ def _parse_timestamp(ts) -> Optional[datetime]:
         return None
 
 
+def _published_build_time(body) -> Optional[datetime]:
+    """Pull the published build's stamp out of a release body, if present."""
+    if not isinstance(body, str):
+        return None
+    match = _BUILD_MARKER.search(body)
+    return _parse_timestamp(match.group(1)) if match else None
+
+
 def check_for_update(fetch: Fetcher = _default_fetch) -> UpdateCheckResult:
-    """Compare this build's stamp against the matching release's freshness."""
+    """Compare this build's stamp against the published build's stamp."""
     build_time = _parse_timestamp(build_info.BUILD_TIME)
     tag = _CHANNEL_TAGS.get(build_info.BUILD_CHANNEL)
     if build_time is None or tag is None:
@@ -82,18 +108,15 @@ def check_for_update(fetch: Fetcher = _default_fetch) -> UpdateCheckResult:
     except (urllib.error.URLError, OSError, ValueError) as exc:
         return UpdateCheckResult("error", f"Couldn't check for updates: {exc}")
 
-    stamps = [
-        t
-        for t in (
-            _parse_timestamp(data.get("published_at")),
-            *(_parse_timestamp(a.get("updated_at")) for a in data.get("assets") or []),
-        )
-        if t is not None
-    ]
-    if not stamps:
-        return UpdateCheckResult("error", "Couldn't read the release's build time.")
+    release_url = data.get("html_url") if isinstance(data, dict) else None
+    published = _published_build_time(data.get("body") if isinstance(data, dict) else None)
+    if published is None:
+        # A release published before this marker existed, or by something
+        # other than the workflows. Reporting "couldn't tell" beats guessing
+        # from the upload timestamps, which is what produced false
+        # "update available" on every single fresh download.
+        return UpdateCheckResult("error", "Couldn't read the published build's time.", release_url)
 
-    release_url = data.get("html_url")
-    if max(stamps) > build_time:
+    if published > build_time:
         return UpdateCheckResult("update_available", "A newer build is available.", release_url)
     return UpdateCheckResult("up_to_date", "You're up to date.", release_url)

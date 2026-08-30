@@ -36,6 +36,7 @@ jobs:
         # this. build-source-zips.sh's git-archive step doesn't see this
         # on-disk stamp by itself -- it copies the stamped file back in
         # afterward (see that script).
+        id: stamp
         run: python3 packaging/stamp_build_info.py source-packages
 
       - name: Build the Linux-only and Windows-only source zips
@@ -71,5 +72,7 @@ jobs:
             `Build source packages` workflow. Two separate zips: one with
             `install.sh`/`run.sh` for Linux, one with `install.bat`/`run.bat`
             for Windows -- neither contains the other platform's installer.
+
+            <!-- vclick-build-time: ${{ steps.stamp.outputs.build-time }} -->
           prerelease: true
           files: packaging/source-packages/VClick-*-source.zip
