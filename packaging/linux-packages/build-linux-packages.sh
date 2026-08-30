@@ -12,7 +12,7 @@ HERE="packaging/linux-packages"
 
 echo "== VClick .deb/.rpm builder =="
 
-VERSION="$(python3 -c 'import re; print(re.search(r"version = \"(.*?)\"", open("pyproject.toml").read()).group(1))')"
+VERSION="$(python3 -c 'import vclick; print(vclick.__version__)')"
 
 # A regular (non-editable) install: an editable install's import-hook
 # machinery is invisible to PyInstaller's static analyzer, which then
