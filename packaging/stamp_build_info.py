@@ -6,11 +6,18 @@ build script runs, so the finished artifact bundles a real BUILD_TIME the
 running app can compare against the matching GitHub release to detect
 "is there a newer build" (vclick.updates.check_for_update).
 
+The same timestamp is also emitted as the "build-time" step output, so the
+workflow can write it into the release body as the marker that check reads.
+Both sides of the comparison must be this one value: comparing the stamp
+against GitHub's own asset-upload times instead is what made every fresh
+download report "update available" (see vclick/updates.py).
+
 Usage: python packaging/stamp_build_info.py <channel>
 """
 
 from __future__ import annotations
 
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,6 +48,13 @@ def main(argv: list[str]) -> int:
     target = Path(__file__).resolve().parent.parent / "vclick" / "build_info.py"
     target.write_text(TEMPLATE.format(build_time=build_time, channel=channel), encoding="utf-8")
     print(f"Stamped {target}: BUILD_TIME={build_time} BUILD_CHANNEL={channel}")
+
+    # Hand the exact same string to the workflow so it can publish it in the
+    # release body. Absent outside CI, where there is no file to append to.
+    step_output = os.environ.get("GITHUB_OUTPUT")
+    if step_output:
+        with open(step_output, "a", encoding="utf-8") as fh:
+            fh.write(f"build-time={build_time}\n")
     return 0
 
 
