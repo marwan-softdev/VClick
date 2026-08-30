@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vclick"
-version = "1.0.0"
+dynamic = ["version"]
 description = "Watch a screen area and auto-click a location the moment it changes."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -40,6 +40,9 @@ vclick-cli = "vclick.cli:main"
 
 [tool.setuptools]
 packages = ["vclick"]
+
+[tool.setuptools.dynamic]
+version = { attr = "vclick.__version__" }
 
 [tool.setuptools.package-data]
 vclick = ["assets/*.png", "assets/*.ico"]

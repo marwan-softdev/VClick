@@ -8,15 +8,19 @@ name: Cut a stable release
 #
 # This takes a real snapshot instead: it grabs whatever is currently
 # attached to the three rolling releases (all built from the same push,
-# by the workflows above) and republishes them under a fixed version tag
-# as a normal, non-prerelease release -- the one GitHub then highlights.
+# by the workflows above) and republishes them under a version tag, taken
+# from vclick/__init__.py's __version__ (the single source of truth --
+# pyproject.toml reads its own version from the same attribute), as a
+# normal, non-prerelease release -- the one GitHub then highlights.
+#
+# The version tag is deliberately *not* a free-text input: it's read from
+# the code so cutting a new release forces an actual version bump first,
+# rather than a label someone can type without touching anything. If
+# "vX.Y.Z" already exists as a release, this fails instead of silently
+# re-publishing over it -- bump __version__ in vclick/__init__.py and
+# push that before running this again.
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag to cut, e.g. v1.0.0'
-        required: true
-        default: v1.0.0
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -26,6 +30,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Read the version to release
+        id: version
+        run: |
+          version="v$(python3 -c 'import vclick; print(vclick.__version__)')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing $version"
+
+      - name: Refuse to re-cut an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.version.outputs.version }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "::error::${{ steps.version.outputs.version }} has already been released." \
+                 "Bump __version__ in vclick/__init__.py, push it to main, then re-run this workflow."
+            exit 1
+          fi
 
       - name: Download current rolling-release assets
         env:
@@ -41,9 +66,10 @@ jobs:
       - name: Publish stable release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release create "${{ inputs.version }}" dist/* \
+          gh release create "$VERSION" dist/* \
             --repo "${{ github.repository }}" \
-            --title "VClick ${{ inputs.version }}" \
-            --notes "Stable snapshot of VClick, built from commit ${{ github.sha }}. Includes the Linux AppImage, .deb/.rpm packages, and source packages for Linux and Windows." \
+            --title "VClick $VERSION" \
+            --notes "Stable snapshot of VClick $VERSION, built from commit ${{ github.sha }}. Includes the Linux AppImage, .deb/.rpm packages, and source packages for Linux and Windows." \
             --latest
