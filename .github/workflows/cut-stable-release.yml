@@ -1,0 +1,49 @@
+name: Cut a stable release
+
+# The appimage/linux-packages/source-packages workflows only ever publish
+# to rolling "*-latest" tags marked prerelease -- fine for always-fresh
+# downloads, but it means GitHub never has a "Latest release" to highlight
+# on the repo's own homepage (the API 404s), so a visitor who lands there
+# instead of the website has to dig through the Releases tab themselves.
+#
+# This takes a real snapshot instead: it grabs whatever is currently
+# attached to the three rolling releases (all built from the same push,
+# by the workflows above) and republishes them under a fixed version tag
+# as a normal, non-prerelease release -- the one GitHub then highlights.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to cut, e.g. v1.0.0'
+        required: true
+        default: v1.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download current rolling-release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dist
+          gh release download appimage-latest -D dist -p '*.AppImage' --repo "${{ github.repository }}"
+          gh release download linux-packages-latest -D dist -p '*.deb' --repo "${{ github.repository }}"
+          gh release download linux-packages-latest -D dist -p '*.rpm' --repo "${{ github.repository }}"
+          gh release download source-packages-latest -D dist -p '*.zip' --repo "${{ github.repository }}"
+          ls -la dist
+
+      - name: Publish stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.version }}" dist/* \
+            --repo "${{ github.repository }}" \
+            --title "VClick ${{ inputs.version }}" \
+            --notes "Stable snapshot of VClick, built from commit ${{ github.sha }}. Includes the Linux AppImage, .deb/.rpm packages, and source packages for Linux and Windows." \
+            --latest
