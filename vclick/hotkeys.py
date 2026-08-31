@@ -22,7 +22,12 @@ case that a virtual X server does not reproduce.
 
 from __future__ import annotations
 
+import threading
 from typing import Callable, Dict, FrozenSet, Optional, Set, Tuple
+
+# How long :meth:`HotkeyManager.start` will wait for a listener to come up
+# before giving up on it. Starting one normally takes milliseconds.
+READY_TIMEOUT = 3.0
 
 # Canonical modifier names, and the pynput Key names that map onto them.
 _MOD_ALIASES = {
@@ -145,6 +150,67 @@ def is_valid(hotkey: str) -> bool:
     return parse_hotkey(hotkey) is not None
 
 
+def _stop_in_background(listener) -> None:
+    """Tear a listener down on a throwaway thread.
+
+    pynput's ``Listener.stop()`` is not the quick flag-flip it looks like:
+    its X11 backend calls ``wait()`` from ``_stop_platform``, so stopping a
+    listener that never became ready blocks the caller for exactly as long
+    as waiting on it would -- forever. The Tk main loop stops a listener on
+    every hotkey change, so it must never be the thread that finds out.
+    """
+
+    def _stop() -> None:
+        try:
+            listener.stop()
+        except Exception:  # noqa: BLE001 - a listener we've already dropped
+            pass
+
+    # Daemon so a wedged teardown can't keep the process alive at exit.
+    threading.Thread(target=_stop, daemon=True).start()
+
+
+def _await_ready(listener) -> Optional[str]:
+    """Bounded stand-in for pynput's own ``Listener.wait()``.
+
+    ``wait()`` blocks *forever* if the listener thread wedges before it
+    signals readiness, and on X11 it can: a garbage collection landing on
+    that thread runs whatever finalisers are due, and a Tk widget's
+    ``__del__`` calls into the Tcl interpreter from the wrong thread, which
+    deadlocks against the main loop that owns it.
+
+    :meth:`HotkeyManager.start` is called straight from the Tk main loop
+    (changing a hotkey does exactly that), so an unbounded wait there froze
+    the entire window -- including the WM close button, since
+    ``WM_DELETE_WINDOW`` is delivered through the same main loop that was
+    stuck. Bounding the wait turns a listener that never comes up into
+    "hotkeys unavailable", which the UI already knows how to report.
+
+    Returns ``None`` once the listener is ready, else a reason string.
+    """
+    outcome: Dict[str, str] = {}
+
+    def _wait() -> None:
+        try:
+            listener.wait()
+            outcome["ready"] = "yes"
+        except Exception as exc:  # noqa: BLE001 - surfaced as a status, never raised
+            outcome["error"] = str(exc) or exc.__class__.__name__
+
+    # Daemon so a wedged listener can't keep the process alive at exit.
+    waiter = threading.Thread(target=_wait, daemon=True)
+    waiter.start()
+    waiter.join(READY_TIMEOUT)
+
+    if "ready" in outcome:
+        return None
+    return outcome.get(
+        "error",
+        f"the key listener didn't start within {READY_TIMEOUT:g}s "
+        "(the desktop may be blocking it)",
+    )
+
+
 class HotkeyManager:
     """Listens globally and invokes callbacks on matching combinations."""
 
@@ -152,6 +218,9 @@ class HotkeyManager:
         self._listener = None
         self._bindings: Dict[ParsedHotkey, Callable[[], None]] = {}
         self._down: Set[str] = set()
+        # Bumped on every stop(). Events from a listener whose teardown is
+        # still in flight carry an older generation and are dropped.
+        self._generation = 0
         self.active = False
         self.error: Optional[str] = None
         # Optional hook: called with a human-readable combo for every key
@@ -173,10 +242,16 @@ class HotkeyManager:
         try:
             from pynput import keyboard  # lazy import: needs a display
 
+            generation = self._generation
             self._listener = keyboard.Listener(
-                on_press=self._on_press, on_release=self._on_release)
+                on_press=lambda key: self._dispatch(generation, self._on_press, key),
+                on_release=lambda key: self._dispatch(generation, self._on_release, key))
             self._listener.start()
-            self._listener.wait()
+            problem = _await_ready(self._listener)
+            if problem is not None:
+                self.stop()
+                self.error = problem
+                return False
             self.active = True
             self.error = None
             return True
@@ -187,16 +262,26 @@ class HotkeyManager:
             return False
 
     def stop(self) -> None:
-        if self._listener is not None:
-            try:
-                self._listener.stop()
-            except Exception:  # noqa: BLE001
-                pass
-            self._listener = None
+        """Stop listening. Returns immediately; see :func:`_stop_in_background`.
+
+        The manager counts as stopped the moment this returns -- the old
+        listener is dropped here and bumping the generation makes any event
+        it still delivers a no-op, so a teardown finishing later can't fire
+        a hotkey behind our back.
+        """
+        listener, self._listener = self._listener, None
+        self._generation += 1
         self._down.clear()
         self.active = False
+        if listener is not None:
+            _stop_in_background(listener)
 
     # -- event handling ----------------------------------------------------
+    def _dispatch(self, generation: int, handler, key) -> None:
+        """Route an event, unless it came from a listener we've since dropped."""
+        if generation == self._generation:
+            handler(key)
+
     def _on_press(self, key) -> None:
         mod = modifier_of(key)
         if mod:

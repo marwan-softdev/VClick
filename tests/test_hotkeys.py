@@ -1,7 +1,13 @@
 """Tests for hotkey parsing and the layout/modifier-robust key matching."""
 
+import sys
+import threading
+import time
+import types
+
 import pytest
 
+from vclick import hotkeys
 from vclick.hotkeys import (
     HotkeyManager, is_valid, modifier_of, normalize_key, parse_hotkey, pretty,
 )
@@ -135,3 +141,68 @@ def test_callback_error_does_not_propagate():
     mgr = HotkeyManager()
     mgr._bindings = {parse_hotkey("a"): lambda: 1 / 0}
     mgr._on_press(FakeKeyCode(char="a"))  # must not raise
+
+
+# -- listener startup must never block the caller --------------------------
+class _StubListener:
+    """Stands in for pynput.keyboard.Listener."""
+
+    def __init__(self, wait_behaviour):
+        self._wait_behaviour = wait_behaviour
+        self.stopped = False
+
+    def start(self):
+        pass
+
+    def wait(self):
+        self._wait_behaviour()
+
+    def stop(self):
+        self.stopped = True
+
+
+def _start_with(monkeypatch, listener, timeout=0.3):
+    """Run HotkeyManager.start() against *listener* instead of real pynput."""
+    monkeypatch.setattr(hotkeys, "READY_TIMEOUT", timeout)
+    fake_keyboard = types.SimpleNamespace(Listener=lambda **kw: listener)
+    monkeypatch.setitem(sys.modules, "pynput", types.SimpleNamespace(keyboard=fake_keyboard))
+    monkeypatch.setitem(sys.modules, "pynput.keyboard", fake_keyboard)
+    mgr = HotkeyManager()
+    started = time.time()
+    ok = mgr.start({"<ctrl>+<shift>+s": lambda: None})
+    return mgr, ok, time.time() - started
+
+
+def test_start_gives_up_on_a_listener_that_never_becomes_ready(monkeypatch):
+    """Regression: a wedged listener froze the whole app, close button included.
+
+    HotkeyManager.start() runs on the Tk main loop, and pynput's own
+    Listener.wait() has no timeout -- so a listener thread that never
+    signalled readiness (it can deadlock against Tk during a GC on that
+    thread) hung the main loop forever, leaving a window that wouldn't
+    redraw or close. start() must give up and report instead.
+    """
+    listener = _StubListener(threading.Event().wait)  # never returns
+    mgr, ok, elapsed = _start_with(monkeypatch, listener)
+
+    assert ok is False
+    assert mgr.active is False
+    assert mgr.error and "didn't start" in mgr.error
+    assert elapsed < 3, f"start() blocked for {elapsed:.1f}s -- it must be bounded"
+
+
+def test_start_reports_a_listener_that_fails_outright(monkeypatch):
+    def boom():
+        raise RuntimeError("no X display")
+
+    mgr, ok, _ = _start_with(monkeypatch, _StubListener(boom))
+    assert ok is False
+    assert mgr.active is False
+    assert "no X display" in (mgr.error or "")
+
+
+def test_start_succeeds_when_the_listener_comes_up(monkeypatch):
+    mgr, ok, _ = _start_with(monkeypatch, _StubListener(lambda: None))
+    assert ok is True
+    assert mgr.active is True
+    assert mgr.error is None

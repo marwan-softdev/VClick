@@ -9,6 +9,7 @@ can still be imported for tooling/tests without a display.
 
 from __future__ import annotations
 
+import gc
 import queue
 import threading
 from typing import Optional
@@ -1612,6 +1613,16 @@ class VClickApp:
         dlg.grab_set()
         dlg.focus_force()
         self.root.wait_window(dlg)
+
+        # Destroying the dialog turns its widgets' Tk font objects into
+        # garbage. Collecting here runs their finalisers on this thread --
+        # the one that owns the Tcl interpreter. Left for a later automatic
+        # collection, they could instead run on whichever thread happened to
+        # trigger it (the global-hotkey listener is a live candidate), and a
+        # Tk finaliser calling into Tcl from a foreign thread deadlocks that
+        # thread. That wedged the listener the very next line goes on to
+        # restart, which is how closing this dialog used to hang the app.
+        gc.collect()
 
         combo = captured["combo"]
         if combo:
