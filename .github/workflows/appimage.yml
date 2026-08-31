@@ -1,5 +1,10 @@
 name: Build AppImage
 
+# Builds and smoke-tests the AppImage on every push that touches it, so a
+# broken build is caught immediately -- but doesn't publish anything itself.
+# The artifact uploaded below is what "Cut a version release" pulls from
+# when a maintainer deliberately bumps vclick.__version__ and cuts a real
+# release; nothing here runs on every commit.
 on:
   push:
     branches:
@@ -10,9 +15,6 @@ on:
       - "packaging/appimage/**"
       - ".github/workflows/appimage.yml"
   workflow_dispatch: {}
-
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -25,7 +27,6 @@ jobs:
           python-version: "3.11"
 
       - name: Stamp build info
-        id: stamp
         run: python packaging/stamp_build_info.py appimage
 
       - name: Build AppImage
@@ -51,26 +52,3 @@ jobs:
           name: VClick-AppImage
           path: packaging/appimage/VisualClick-*.AppImage
           if-no-files-found: error
-
-      - name: Publish as a release asset
-        # End users should get one finished file, not a source zip they have
-        # to build themselves -- so the AppImage also gets attached to a
-        # rolling release, giving it a stable, direct download URL that's
-        # entirely separate from the branch's source zip (which still has
-        # install.sh + this build tooling in it, for the terminal-install
-        # path). Re-running this updates that same release's asset in place
-        # rather than creating a new one each time.
-        #
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: appimage-latest
-          name: VClick AppImage (latest build)
-          body: |
-            Automatically built from commit ${{ github.sha }} by the
-            `Build AppImage` workflow. Download the `.AppImage` file below,
-            mark it executable, and run it -- no install step, no root.
-
-            <!-- vclick-build-time: ${{ steps.stamp.outputs.build-time }} -->
-          prerelease: true
-          files: packaging/appimage/VisualClick-*.AppImage

@@ -1,5 +1,10 @@
 name: Build source packages
 
+# Builds these on every push that touches them, so a broken build is caught
+# immediately -- but doesn't publish anything itself. The artifact uploaded
+# below is what "Cut a version release" pulls from when a maintainer
+# deliberately bumps vclick.__version__ and cuts a real release; nothing
+# here runs on every commit.
 on:
   push:
     branches:
@@ -21,9 +26,6 @@ on:
       - ".github/workflows/source-packages.yml"
   workflow_dispatch: {}
 
-permissions:
-  contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,7 +38,6 @@ jobs:
         # this. build-source-zips.sh's git-archive step doesn't see this
         # on-disk stamp by itself -- it copies the stamped file back in
         # afterward (see that script).
-        id: stamp
         run: python3 packaging/stamp_build_info.py source-packages
 
       - name: Build the Linux-only and Windows-only source zips
@@ -60,19 +61,3 @@ jobs:
           name: VClick-source-packages
           path: packaging/source-packages/VClick-*-source.zip
           if-no-files-found: error
-
-      - name: Publish as release assets
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: source-packages-latest
-          name: VClick source packages (latest build)
-          body: |
-            Automatically built from commit ${{ github.sha }} by the
-            `Build source packages` workflow. Two separate zips: one with
-            `install.sh`/`run.sh` for Linux, one with `install.bat`/`run.bat`
-            for Windows -- neither contains the other platform's installer.
-
-            <!-- vclick-build-time: ${{ steps.stamp.outputs.build-time }} -->
-          prerelease: true
-          files: packaging/source-packages/VClick-*-source.zip

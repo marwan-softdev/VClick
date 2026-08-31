@@ -1,16 +1,15 @@
 name: Cut a version release
 
-# The appimage/linux-packages/source-packages workflows only ever publish
-# to rolling "*-latest" tags marked prerelease -- fine for always-fresh
-# downloads, but it means GitHub never has a "Latest release" to highlight
-# on the repo's own homepage (the API 404s), so a visitor who lands there
-# instead of the website has to dig through the Releases tab themselves.
+# The appimage/linux-packages/source-packages workflows build and smoke-test
+# on every push, but publish nothing themselves -- otherwise GitHub would
+# accumulate a "latest build" release per push, which is what this replaced.
 #
-# This takes a real snapshot instead: it grabs whatever is currently
-# attached to the three rolling releases (all built from the same push,
-# by the workflows above) and republishes them under a version tag, taken
-# from vclick/__init__.py's __version__ (the single source of truth --
-# pyproject.toml reads its own version from the same attribute).
+# This is the only thing that actually publishes a release: it takes this
+# commit's already-built, already-tested artifacts from those three
+# workflows and publishes them together under a version tag, taken from
+# vclick/__init__.py's __version__ (the single source of truth --
+# pyproject.toml reads its own version from the same attribute), then
+# re-points the website's download links at that same tag.
 #
 # A "0.y.z" version is published as a GitHub pre-release labeled "(Beta)"
 # instead of a polished stable release -- VClick hasn't shipped a stable
@@ -29,6 +28,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   release:
@@ -64,15 +64,25 @@ jobs:
             exit 1
           fi
 
-      - name: Download current rolling-release assets
+      - name: Download this commit's build artifacts
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p dist
-          gh release download appimage-latest -D dist -p '*.AppImage' --repo "${{ github.repository }}"
-          gh release download linux-packages-latest -D dist -p '*.deb' --repo "${{ github.repository }}"
-          gh release download linux-packages-latest -D dist -p '*.rpm' --repo "${{ github.repository }}"
-          gh release download source-packages-latest -D dist -p '*.zip' --repo "${{ github.repository }}"
+          for workflow in appimage.yml linux-packages.yml source-packages.yml; do
+            run_id="$(gh run list --repo "${{ github.repository }}" --workflow "$workflow" \
+              --limit 20 --json databaseId,headSha,status,conclusion --jq \
+              "[.[] | select(.headSha == \"${{ github.sha }}\" and .status == \"completed\" and .conclusion == \"success\")][0].databaseId")"
+            if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+              echo "::error::No successful run of $workflow found for commit ${{ github.sha }}." \
+                   "Wait for CI on this commit to finish, then re-run this workflow."
+              exit 1
+            fi
+            echo "Downloading artifacts from $workflow run $run_id"
+            gh run download "$run_id" --repo "${{ github.repository }}" -D "tmp-dl"
+            find "tmp-dl" -type f -exec mv {} dist/ \;
+            rm -rf "tmp-dl"
+          done
           ls -la dist
 
       - name: Publish release
@@ -93,4 +103,39 @@ jobs:
               --title "VClick $VERSION" \
               --notes "Stable snapshot of VClick $VERSION, built from commit ${{ github.sha }}. Includes the Linux AppImage, .deb/.rpm packages, and source packages for Linux and Windows." \
               --latest
+          fi
+
+      - name: Point the website at this release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git fetch origin gh-pages
+          git worktree add -B gh-pages gh-pages-wt origin/gh-pages
+          cd gh-pages-wt
+          sed -i -E "s#(releases/download/)v[0-9]+\.[0-9]+\.[0-9]+(/)#\1${VERSION}\2#g" index.html
+          if git diff --quiet; then
+            echo "Website already points at $VERSION"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add index.html
+            git commit -m "Point downloads at $VERSION"
+            git push origin gh-pages
+          fi
+
+      - name: Point README's release links at this release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          sed -i -E "s#(releases/tag/)v[0-9]+\.[0-9]+\.[0-9]+#\1${VERSION}#g" README.md
+          if git diff --quiet; then
+            echo "README already points at $VERSION"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "Point README's release links at $VERSION"
+            git push origin HEAD:main
           fi

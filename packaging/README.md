@@ -11,13 +11,16 @@ package steps (Tkinter, `python3-venv`).
 **For end users: download the single `.AppImage` file, don't build it.**
 Every push to this branch that touches `vclick/`, `pyproject.toml`, or
 `packaging/appimage/` triggers the `Build AppImage` GitHub Actions workflow,
-which (after a real build and a smoke test) publishes the result to the
-[**`appimage-latest` release**](../../releases/tag/appimage-latest) — a
-stable, direct-download link to just that one file, deliberately kept
+which builds and smoke-tests it on every push but doesn't publish anything
+itself. A maintainer publishes it by bumping `vclick.__version__` and
+running the `Cut a version release` workflow, which takes that commit's
+already-tested AppImage (alongside the .deb/.rpm and source packages) and
+attaches it to a normal, versioned GitHub release
+(`../../releases`) — deliberately kept
 separate from the branch's *source* zip (which is for the `install.sh`
-terminal-install path and still contains this build tooling). That release
-URL doesn't change between builds; downloading it never requires a GitHub
-login, unlike a workflow-run artifact.
+terminal-install path and still contains this build tooling). A release's
+download URL doesn't change once cut; downloading it never requires a
+GitHub login, unlike a workflow-run artifact.
 
 **Building it yourself** (for a different CPU architecture, or to test a
 change to this packaging) needs a machine with normal internet access to

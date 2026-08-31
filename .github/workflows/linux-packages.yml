@@ -1,5 +1,10 @@
 name: Build Linux .deb/.rpm packages
 
+# Builds and smoke-tests both packages on every push that touches them, so a
+# broken build is caught immediately -- but doesn't publish anything itself.
+# The artifact uploaded below is what "Cut a version release" pulls from
+# when a maintainer deliberately bumps vclick.__version__ and cuts a real
+# release; nothing here runs on every commit.
 on:
   push:
     branches:
@@ -10,9 +15,6 @@ on:
       - "packaging/linux-packages/**"
       - ".github/workflows/linux-packages.yml"
   workflow_dispatch: {}
-
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -25,7 +27,6 @@ jobs:
           python-version: "3.11"
 
       - name: Stamp build info
-        id: stamp
         run: python packaging/stamp_build_info.py linux-packages
 
       - name: Install packaging tools (fpm, rpmbuild)
@@ -68,21 +69,3 @@ jobs:
             packaging/linux-packages/VClick-x86_64.deb
             packaging/linux-packages/VClick-x86_64.rpm
           if-no-files-found: error
-
-      - name: Publish as release assets
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: linux-packages-latest
-          name: VClick Linux .deb/.rpm (latest build)
-          body: |
-            Automatically built from commit ${{ github.sha }} by the
-            `Build Linux .deb/.rpm packages` workflow. Self-contained --
-            bundled Python, Tkinter, and every dependency -- so no other
-            packages need to be installed first.
-
-            <!-- vclick-build-time: ${{ steps.stamp.outputs.build-time }} -->
-          prerelease: true
-          files: |
-            packaging/linux-packages/VClick-x86_64.deb
-            packaging/linux-packages/VClick-x86_64.rpm

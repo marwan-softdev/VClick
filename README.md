@@ -69,10 +69,10 @@ application menu from then on.
 
 - **AppImage** (no sudo, no install step): download
   `VisualClick-*.AppImage` from the
-  [`appimage-latest` release](../../releases/tag/appimage-latest),
+  [latest release](../../releases/tag/v0.1.0),
   mark it executable, and double-click it.
 - **Native package**: `VClick-x86_64.deb` or `VClick-x86_64.rpm` from the
-  [`linux-packages-latest` release](../../releases/tag/linux-packages-latest) —
+  [latest release](../../releases/tag/v0.1.0) —
   both self-contained, `sudo dpkg -i ...` / `sudo rpm -i ...`.
 - **Manual, no launcher icon**:
   ```bash
@@ -86,7 +86,7 @@ application menu from then on.
 ### Windows
 
 **Option 1: Double-click (easiest)**
-1. Download the source zip from the [latest release](../../releases/tag/source-packages-latest) and extract it.
+1. Download the source zip from the [latest release](../../releases/tag/v0.1.0) and extract it.
 2. Navigate to the extracted folder and **double-click `install.bat`** — that's it!
 3. The installer runs and creates a Start Menu shortcut (and a Desktop icon) with VisualClick's own icon.
 4. From then on, search **"VisualClick"** in the Start Menu or double-click the desktop icon — it opens with **no console window**.
