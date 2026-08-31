@@ -120,7 +120,7 @@ run.bat --check        REM Windows
 Example, on a normal Linux X11 desktop:
 
 ```
-VClick 1.0.0
+VClick 0.1.0
 platform     : Linux 6.8.0
 session type : x11
 DISPLAY      : :0

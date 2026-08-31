@@ -93,6 +93,17 @@ def test_gui_keysym_mapping_is_importable_headlessly():
     assert _keysym_to_token("Return") == "<enter>"
     assert _keysym_to_token("space") == "<space>"
     assert _keysym_to_token("Control_L") is None
+    # Shift+Tab arrives as its own keysym on X11, not "Tab" with a shift bit.
+    assert _keysym_to_token("ISO_Left_Tab") == "<tab>"
+    # Punctuation -- both unshifted (comma, semicolon...) and shifted
+    # (Shift+1 -> exclam, Shift+comma -> less...) -- is named mnemonically
+    # rather than given a literal single-character keysym, and used to be
+    # silently rejected as unusable.
+    assert _keysym_to_token("comma") == ","
+    assert _keysym_to_token("semicolon") == ";"
+    assert _keysym_to_token("exclam") == "!"
+    assert _keysym_to_token("at") == "@"
+    assert _keysym_to_token("less") == "<"
 
 
 # -- live (non-covering) selector geometry ---------------------------------
