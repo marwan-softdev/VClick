@@ -104,10 +104,31 @@ _MODIFIER_KEYSYMS = {
 }
 _SPECIAL_KEYS = {
     "Return": "<enter>", "space": "<space>", "Tab": "<tab>",
+    # X11 reports Shift+Tab as its own keysym rather than "Tab" with a
+    # shift bit set -- without this, Shift+Tab silently failed to capture.
+    "ISO_Left_Tab": "<tab>",
     "BackSpace": "<backspace>", "Delete": "<delete>", "Up": "<up>",
     "Down": "<down>", "Left": "<left>", "Right": "<right>", "Home": "<home>",
     "End": "<end>", "Prior": "<page_up>", "Next": "<page_down>",
     "Insert": "<insert>",
+}
+# X11 names most punctuation keysyms mnemonically (e.g. "exclam", not "!"),
+# including the *unshifted* ones ("comma", "semicolon", "minus"...). Only
+# letters and digits get literal single-character keysyms. Without this
+# table, `_keysym_to_token`'s `len(keysym) == 1` check rejected nearly all
+# punctuation -- and every Shift+number/symbol combo, since Shift changes
+# the keysym name too (e.g. "1" -> "exclam") -- leaving only bare letters
+# and digits capturable.
+_SYMBOL_KEYSYMS = {
+    "exclam": "!", "quotedbl": '"', "numbersign": "#", "dollar": "$",
+    "percent": "%", "ampersand": "&", "apostrophe": "'", "quoteright": "'",
+    "parenleft": "(", "parenright": ")", "asterisk": "*", "plus": "+",
+    "comma": ",", "minus": "-", "period": ".", "slash": "/",
+    "colon": ":", "semicolon": ";", "less": "<", "equal": "=",
+    "greater": ">", "question": "?", "at": "@", "bracketleft": "[",
+    "backslash": "\\", "bracketright": "]", "asciicircum": "^",
+    "underscore": "_", "grave": "`", "quoteleft": "`", "braceleft": "{",
+    "bar": "|", "braceright": "}", "asciitilde": "~",
 }
 
 
@@ -127,6 +148,8 @@ def _keysym_to_token(keysym: str) -> Optional[str]:
         return keysym.lower()
     if keysym in _SPECIAL_KEYS:
         return _SPECIAL_KEYS[keysym]
+    if keysym in _SYMBOL_KEYSYMS:
+        return _SYMBOL_KEYSYMS[keysym]
     if len(keysym) >= 2 and keysym[0] in "Ff" and keysym[1:].isdigit():
         return f"<{keysym.lower()}>"
     return None
@@ -173,7 +196,6 @@ class VClickApp:
 
         self._events: "queue.Queue[MonitorEvent]" = queue.Queue()
         self._actions: "queue.Queue[str]" = queue.Queue()
-        self._observed: "queue.Queue[str]" = queue.Queue()
         self._update_queue: "queue.Queue[UpdateCheckResult]" = queue.Queue()
         self.monitor = Monitor(self.config, on_event=self._events.put)
         self.hotkeys = HotkeyManager()
@@ -622,23 +644,12 @@ class VClickApp:
                                                wraplength=440, justify="left")
         self.hotkey_status_lbl.grid(row=6, column=0, columnspan=3, sticky="w",
                                      padx=(16, 16), pady=(0, 16))
-
-        tester = self._section(tab, "Key Tester")
-        tester.pack(fill="x", pady=(0, CARD_GAP))
-        tester.columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(tester, text="Press any combination:", text_color=_MUTED, anchor="w").grid(
-            row=2, column=0, sticky="w", padx=(16, 0), pady=(0, 14))
-        self.hotkey_seen_lbl = ctk.CTkLabel(tester, text="Nothing yet", font=("Sans", 12, "bold"),
-                                             fg_color="transparent", text_color=_MUTED,
-                                             corner_radius=6, anchor="e")
-        self.hotkey_seen_lbl.grid(row=2, column=1, sticky="e", padx=(0, 16), pady=(0, 14))
         ctk.CTkLabel(
-            tester,
+            card,
             text="Global hotkeys work on Windows and Linux X11. On Linux Wayland the\n"
                  "system usually blocks them — use the Start button instead.",
             text_color=_MUTED, font=("Sans", 10), justify="left", anchor="w",
-        ).grid(row=3, column=0, columnspan=2, sticky="w", padx=(16, 16), pady=(0, 16))
+        ).grid(row=7, column=0, columnspan=3, sticky="w", padx=(16, 16), pady=(0, 16))
 
     def _build_tab_why(self, tabview) -> None:
         ctk, ttk, tk = self.ctk, self.ttk, self.tk
@@ -1256,15 +1267,6 @@ class VClickApp:
                     self._set_status(f"Hotkey action failed: {exc}", _ERROR)
 
             if not quitting:
-                last_seen = None
-                while True:
-                    try:
-                        last_seen = self._observed.get_nowait()
-                    except queue.Empty:
-                        break
-                if last_seen is not None:
-                    self._style_chip(self.hotkey_seen_lbl, last_seen, True)
-
                 while True:
                     try:
                         ev = self._events.get_nowait()
@@ -1530,7 +1532,6 @@ class VClickApp:
         if not (is_valid(t) and is_valid(q)):
             self._set_hotkey_status("Invalid hotkey combination.", _ERROR)
             return
-        self.hotkeys.on_observed = self._observed.put
         ok = self.hotkeys.start({
             t: lambda: self._actions.put("toggle"),
             q: lambda: self._actions.put("quit"),
@@ -1584,6 +1585,9 @@ class VClickApp:
                      font=("Sans", 13, "bold"), text_color=_TEXT).pack(padx=32, pady=(26, 4))
         ctk.CTkLabel(card, text="Esc also cancels", font=("Sans", 11),
                      text_color=_MUTED).pack(padx=32, pady=(0, 18))
+        hint_lbl = ctk.CTkLabel(card, text="", font=("Sans", 11),
+                                 text_color=_ERROR_TEXT)
+        hint_lbl.pack(padx=32, pady=(0, 6))
         captured = {"combo": None}
 
         def on_key(event):
@@ -1594,6 +1598,10 @@ class VClickApp:
                 return
             combo = _event_to_hotkey(event)
             if combo is None:
+                # Silently ignoring this left the modal grab in place with
+                # no visible sign the app was still responsive, reading as
+                # a freeze. Say what happened and let the user try again.
+                hint_lbl.configure(text="That key can't be used as a hotkey — try another.")
                 return
             captured["combo"] = combo
             dlg.destroy()
