@@ -209,6 +209,21 @@ section h2 {
 }
 .how, .download { border-top: 1px solid var(--color-hairline); }
 
+.beta-badge {
+  display: inline-block;
+  vertical-align: middle;
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--color-ember);
+  background: var(--color-ember-tint);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  margin-left: 10px;
+}
+
 /* --- feature grid --- */
 .grid {
   display: grid;
