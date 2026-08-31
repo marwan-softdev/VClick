@@ -1,4 +1,4 @@
-name: Cut a stable release
+name: Cut a version release
 
 # The appimage/linux-packages/source-packages workflows only ever publish
 # to rolling "*-latest" tags marked prerelease -- fine for always-fresh
@@ -10,8 +10,13 @@ name: Cut a stable release
 # attached to the three rolling releases (all built from the same push,
 # by the workflows above) and republishes them under a version tag, taken
 # from vclick/__init__.py's __version__ (the single source of truth --
-# pyproject.toml reads its own version from the same attribute), as a
-# normal, non-prerelease release -- the one GitHub then highlights.
+# pyproject.toml reads its own version from the same attribute).
+#
+# A "0.y.z" version is published as a GitHub pre-release labeled "(Beta)"
+# instead of a polished stable release -- VClick hasn't shipped a stable
+# 1.0 yet, so a snapshot cut today shouldn't claim to be one. Once
+# __version__ reaches "1.0.0" or higher, this switches to a normal,
+# non-prerelease release marked as the repo's "Latest".
 #
 # The version tag is deliberately *not* a free-text input: it's read from
 # the code so cutting a new release forces an actual version bump first,
@@ -38,9 +43,16 @@ jobs:
       - name: Read the version to release
         id: version
         run: |
-          version="v$(python3 -c 'import vclick; print(vclick.__version__)')"
+          raw_version="$(python3 -c 'import vclick; print(vclick.__version__)')"
+          version="v$raw_version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "Releasing $version"
+          if [ "$(echo "$raw_version" | cut -d. -f1)" = "0" ]; then
+            echo "beta=true" >> "$GITHUB_OUTPUT"
+            echo "Releasing $version as a beta pre-release"
+          else
+            echo "beta=false" >> "$GITHUB_OUTPUT"
+            echo "Releasing $version as the stable latest release"
+          fi
 
       - name: Refuse to re-cut an existing release
         env:
@@ -63,13 +75,22 @@ jobs:
           gh release download source-packages-latest -D dist -p '*.zip' --repo "${{ github.repository }}"
           ls -la dist
 
-      - name: Publish stable release
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
+          BETA: ${{ steps.version.outputs.beta }}
         run: |
-          gh release create "$VERSION" dist/* \
-            --repo "${{ github.repository }}" \
-            --title "VClick $VERSION" \
-            --notes "Stable snapshot of VClick $VERSION, built from commit ${{ github.sha }}. Includes the Linux AppImage, .deb/.rpm packages, and source packages for Linux and Windows." \
-            --latest
+          if [ "$BETA" = "true" ]; then
+            gh release create "$VERSION" dist/* \
+              --repo "${{ github.repository }}" \
+              --title "VClick $VERSION (Beta)" \
+              --notes "Beta snapshot of VClick $VERSION, built from commit ${{ github.sha }}. Includes the Linux AppImage, .deb/.rpm packages, and source packages for Linux and Windows. VClick hasn't reached a stable 1.0 release yet -- expect rough edges." \
+              --prerelease
+          else
+            gh release create "$VERSION" dist/* \
+              --repo "${{ github.repository }}" \
+              --title "VClick $VERSION" \
+              --notes "Stable snapshot of VClick $VERSION, built from commit ${{ github.sha }}. Includes the Linux AppImage, .deb/.rpm packages, and source packages for Linux and Windows." \
+              --latest
+          fi
