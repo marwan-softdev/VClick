@@ -211,6 +211,59 @@ def _await_ready(listener) -> Optional[str]:
     )
 
 
+def _patch_pynput_mode_switch() -> None:
+    """Work around a pynput X11 bug that corrupts Shift+<letter> decoding.
+
+    pynput derives its "AltGr" modifier mask by looking up the X keycode
+    bound to the legacy ``Mode_switch`` keysym and scanning the server's
+    modifier map for it (``pynput._util.xorg._find_mask``). On any XKB
+    setup that switches keyboard *groups* instead of using a physical
+    Mode_switch key -- a multi-group layout such as "us,ara,us" -- no key
+    is bound to ``Mode_switch`` at all, so that lookup returns keycode 0.
+    The scan then matches keycode 0 against the *padding* in the server's
+    modifier map (unused modifier slots are zero-filled), and since Shift
+    is the first row scanned, "AltGr" ends up aliased to plain Shift.
+
+    pynput folds that mask into the keysym-column index it reads for every
+    keypress (``pynput._util.xorg.shift_to_index``): normally
+    ``index = shift_bit + 2*altgr_bit``, but with AltGr aliased to the same
+    bit as Shift, holding Shift sets *both* terms, landing on column 3
+    instead of column 1 -- the layout's third/fourth group symbol instead
+    of the shifted Latin letter. A hotkey containing Shift then never
+    matches what the capture dialog recorded (Tk reads the keysym directly
+    and isn't affected).
+
+    This wraps ``_find_mask`` so a symbol bound to no key contributes no
+    mask, instead of whatever it happens to coincide with. It's a no-op
+    wherever the bug doesn't apply: non-X11 backends don't import this
+    module, and a modifier that *is* actually bound to a key resolves
+    exactly as before, since the original lookup still runs for it.
+    """
+    try:
+        from pynput._util import xorg
+    except ImportError:
+        return  # not the X11 backend -- nothing to patch
+
+    original = xorg._find_mask
+    if getattr(original, "_vclick_patched", False):
+        return  # already patched (start() can run more than once)
+
+    def patched(display, symbol):
+        keycode = display.keysym_to_keycode(_string_to_keysym(symbol))
+        if keycode == 0:
+            return 0  # unbound -- never coincide with an in-use modifier
+        return original(display, symbol)
+
+    patched._vclick_patched = True
+    xorg._find_mask = patched
+
+
+def _string_to_keysym(symbol):
+    import Xlib.XK
+
+    return Xlib.XK.string_to_keysym(symbol)
+
+
 class HotkeyManager:
     """Listens globally and invokes callbacks on matching combinations."""
 
@@ -242,6 +295,7 @@ class HotkeyManager:
         try:
             from pynput import keyboard  # lazy import: needs a display
 
+            _patch_pynput_mode_switch()
             generation = self._generation
             self._listener = keyboard.Listener(
                 on_press=lambda key: self._dispatch(generation, self._on_press, key),

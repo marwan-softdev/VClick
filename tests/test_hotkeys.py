@@ -206,3 +206,105 @@ def test_start_succeeds_when_the_listener_comes_up(monkeypatch):
     assert ok is True
     assert mgr.active is True
     assert mgr.error is None
+
+
+# -- pynput's X11 Mode_switch bug (Shift+letter decoded from the wrong
+#    keyboard-layout column on multi-group layouts) ------------------------
+class _FakeXorgDisplay:
+    """Stands in for the Xlib display object pynput's _find_mask receives."""
+
+    def __init__(self, keycode_of, modifier_mapping):
+        self._keycode_of = keycode_of
+        self._modifier_mapping = modifier_mapping
+
+    def keysym_to_keycode(self, keysym):
+        return self._keycode_of.get(keysym, 0)
+
+    def get_modifier_mapping(self):
+        return self._modifier_mapping
+
+
+def _install_fake_xorg(monkeypatch, find_mask):
+    """Inject a stand-in pynput._util.xorg module with the given _find_mask."""
+    fake_util = types.ModuleType("pynput._util")
+    fake_xorg = types.ModuleType("pynput._util.xorg")
+    fake_xorg._find_mask = find_mask
+    fake_util.xorg = fake_xorg
+    monkeypatch.setitem(sys.modules, "pynput._util", fake_util)
+    monkeypatch.setitem(sys.modules, "pynput._util.xorg", fake_xorg)
+    return fake_xorg
+
+
+def _original_find_mask(display, symbol):
+    """A faithful copy of pynput's actual (buggy) _find_mask, for testing
+    against -- reproduces the real matching behaviour the patch wraps."""
+    import Xlib.XK
+    modifier_keycode = display.keysym_to_keycode(Xlib.XK.string_to_keysym(symbol))
+    for index, keycodes in enumerate(display.get_modifier_mapping()):
+        for keycode in keycodes:
+            if keycode == modifier_keycode:
+                return 1 << index
+    return 0
+
+
+def test_unbound_mode_switch_no_longer_aliases_to_shift(monkeypatch):
+    """Regression: this is the exact shape of a real 'us,ara,us' X server.
+
+    Mode_switch is bound to no key (keycode 0), and the Shift row of the
+    server's modifier map is zero-padded out to 4 slots (only 2 physical
+    keys -- Shift_L/Shift_R -- are actually bound). The unpatched lookup
+    matches keycode 0 against that padding and calls the result "AltGr",
+    which pynput's shift_to_index then folds into every Shift-held keypress
+    -- verified directly against the real modifier map captured from such
+    a display.
+    """
+    display = _FakeXorgDisplay(
+        keycode_of={},  # Mode_switch: unbound anywhere
+        modifier_mapping=[[50, 62, 0, 0], [66, 0, 0, 0], [37, 105, 0, 0]],
+    )
+    # Sanity check: the bug is real in the function being wrapped.
+    assert _original_find_mask(display, "Mode_switch") == 1  # aliased to Shift
+
+    fake_xorg = _install_fake_xorg(monkeypatch, _original_find_mask)
+    hotkeys._patch_pynput_mode_switch()
+
+    assert fake_xorg._find_mask(display, "Mode_switch") == 0
+
+
+def test_a_genuinely_bound_altgr_key_is_unaffected(monkeypatch):
+    """A layout that *does* bind Mode_switch to a real key must decode the
+    same as before -- this patch only changes the unbound case."""
+    display = _FakeXorgDisplay(
+        keycode_of={ord: 92 for ord in (65406,)},  # some keysym -> keycode 92
+        modifier_mapping=[[50, 62, 0, 0], [66, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0],
+                           [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [92, 0, 0, 0]],
+    )
+    fake_xorg = _install_fake_xorg(monkeypatch, _original_find_mask)
+    hotkeys._patch_pynput_mode_switch()
+
+    assert fake_xorg._find_mask(display, "Mode_switch") == 1 << 7
+
+
+def test_patch_is_idempotent(monkeypatch):
+    """start() calls this on every hotkey change -- must not double-wrap."""
+    fake_xorg = _install_fake_xorg(monkeypatch, _original_find_mask)
+    hotkeys._patch_pynput_mode_switch()
+    once = fake_xorg._find_mask
+    hotkeys._patch_pynput_mode_switch()
+    assert fake_xorg._find_mask is once
+
+
+def test_missing_pynput_internals_is_a_silent_no_op(monkeypatch):
+    """If pynput's X11 backend can't even be imported (no display, non-X11
+    platform), there is nothing to patch -- must not raise."""
+    monkeypatch.delitem(sys.modules, "pynput._util", raising=False)
+    monkeypatch.delitem(sys.modules, "pynput._util.xorg", raising=False)
+    real_import = __import__
+
+    def blocked(name, *a, **kw):
+        if name.startswith("pynput"):
+            raise ImportError("no X11 backend here")
+        return real_import(name, *a, **kw)
+
+    monkeypatch.setattr("builtins.__import__", blocked)
+    hotkeys._patch_pynput_mode_switch()  # must not raise
